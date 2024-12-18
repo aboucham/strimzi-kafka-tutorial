@@ -10,7 +10,33 @@ Install Streams for Apache Kafka 2.8.0: from OperatorHub
 
 == New Deployment of Kraft
 
-https://remyasavithry.medium.com/kafka-kubernetes-deployment-brokers-with-kraft-zookeeperless-deployment-3-59c9b617b557
+NOTE: KRaft can only be used with a Kafka cluster that uses `KafkaNodePool` resources.
+
+To deploy a Kafka cluster in KRaft mode, you must use the KafkaNodePool resources.
+
+[source, yaml,indent=0]
+----
+oc apply -f - <<EOF
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: kafka
+  labels:
+    strimzi.io/cluster: dev-cluster
+spec:
+  replicas: 3
+  roles:
+    - broker
+    - controller
+  storage:
+      type: jbod
+      volumes:
+      - id: 0
+        type: persistent-claim
+        size: 10Gi
+        deleteClaim: false
+EOF
+----
 
 To use KRaft, you still need to use the `annotations` on the Kafka custom resource (`strimzi.io/kraft: enabled`)
 
@@ -22,7 +48,7 @@ kind: Kafka
 metadata:
   name: dev-cluster
   annotations:
-    # strimzi.io/node-pools: enabled
+    strimzi.io/node-pools: enabled
     strimzi.io/kraft: enabled
 spec:   
   kafka:
