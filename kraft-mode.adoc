@@ -10,6 +10,8 @@ Install Streams for Apache Kafka 2.8.0: from OperatorHub
 
 == New Deployment of Kraft
 
+https://remyasavithry.medium.com/kafka-kubernetes-deployment-brokers-with-kraft-zookeeperless-deployment-3-59c9b617b557
+
 To use KRaft, you still need to use the `annotations` on the Kafka custom resource (`strimzi.io/kraft: enabled`)
 
 [source, yaml,indent=0]
