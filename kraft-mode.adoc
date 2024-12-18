@@ -98,7 +98,18 @@ NOTE: The `.spec.zookeeper` section in the Kafka custom resource is ignored in `
 The .spec.kafka.replicas property in the Kafka custom resource is ignored when node pools are used and should be removed from the custom resource.
 The .spec.kafka.storage section in the Kafka custom resource is ignored when node pools are used and should be removed from the custom resource.
 inter.broker.protocol.version is not used in KRaft-based Kafka clusters and should be removed from the Kafka custom resource.
-  
+
+[source, yaml,indent=0]
+----
+oc get k dev-cluster -o yaml | yq .status.conditions
+----
+[source, yaml,indent=0]
+----
+- lastTransitionTime: "2024-12-18T11:41:17.401143148Z"
+  status: "True"
+  type: Ready
+----
+
 == Migration from Zookeper to Kraft
 
 Migrate your Strimzi-operated cluster from ZooKeeper to KRaft
