@@ -55,3 +55,12 @@ Migrate your Strimzi-operated cluster from ZooKeeper to KRaft
 ----
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-zk-my-cluster.yaml
 ----
+
+=== Starting the migration:
+
+[source, yaml,indent=0]
+----
+oc annotate k my-cluster strimzi.io/node-pools="enabled"
+oc annotate k my-cluster strimzi.io/kraft="disabled"
+----
+
