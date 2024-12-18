@@ -64,3 +64,34 @@ oc annotate k my-cluster strimzi.io/node-pools="enabled"
 oc annotate k my-cluster strimzi.io/kraft="disabled"
 ----
 
+1. Deploy a `KafkaNodePool` CR to provision the KRaft controllers. 
+
+[source, yaml,indent=0]
+----
+oc apply -f - <<EOF
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: controller
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  replicas: 3
+  roles:
+    - controller
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 100Gi
+        deleteClaim: false
+EOF
+----
+
+2. Change the `strimzi.io/kraft` annotation on the `Kafka` CR from `disabled` to `migration` to initiate the process:
+
+[source, yaml,indent=0]
+----
+oc annotate k my-cluster strimzi.io/kraft="migration" --overwrite
+----
