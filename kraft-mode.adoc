@@ -94,6 +94,8 @@ spec:
 EOF
 ----
 
+NOTE: The `.spec.zookeeper` section in the Kafka custom resource is ignored in `KRaft mode` and should be removed from the custom resource.
+
 
   
 == Migration from Zookeper to Kraft
