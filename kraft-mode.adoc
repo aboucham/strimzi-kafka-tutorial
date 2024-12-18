@@ -95,8 +95,9 @@ EOF
 ----
 
 NOTE: The `.spec.zookeeper` section in the Kafka custom resource is ignored in `KRaft mode` and should be removed from the custom resource.
-
-
+The .spec.kafka.replicas property in the Kafka custom resource is ignored when node pools are used and should be removed from the custom resource.
+The .spec.kafka.storage section in the Kafka custom resource is ignored when node pools are used and should be removed from the custom resource.
+inter.broker.protocol.version is not used in KRaft-based Kafka clusters and should be removed from the Kafka custom resource.
   
 == Migration from Zookeper to Kraft
 
