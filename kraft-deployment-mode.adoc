@@ -51,3 +51,7 @@ oc get k dev-cluster -o yaml | yq .status.conditions
 
 Migrate your Strimzi-operated cluster from ZooKeeper to KRaft
 
+[source, yaml,indent=0]
+----
+oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-zk-my-cluster.yaml
+----
