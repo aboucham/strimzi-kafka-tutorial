@@ -132,3 +132,68 @@ spec:
         deleteClaim: false
 EOF
 ----
+
+This will end up with:
+
+[source, yaml,indent=0]
+----
+ oc get knp
+NAME         DESIRED REPLICAS   ROLES                     NODEIDS
+broker       3                  ["broker"]                [0,1,2]
+controller   3                  ["controller"]            [3,4,5]
+----
+
+With that, you will end up with the following list of pods:
+
+[source, yaml,indent=0]
+----
+oc get pods
+my-cluster-broker-0       0/1     Running   0          18s
+my-cluster-broker-1       1/1     Running   0          62s
+my-cluster-broker-2       1/1     Running   0          62s
+my-cluster-controller-3   1/1     Running   0          61s
+my-cluster-controller-4   1/1     Running   0          61s
+my-cluster-controller-5   1/1     Running   0          61s
+my-cluster-zookeeper-0    1/1     Running   0          10h
+my-cluster-zookeeper-1    1/1     Running   0          10h
+my-cluster-zookeeper-2    1/1     Running   0          10h
+----
+
+Log shows:
+
+[source, yaml,indent=0]
+----
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-0/0 was successful.
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:388 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Will temporarily skip verifying pod my-cluster-broker-1/1 is up-to-date due to ForceableProblem: Pod my-cluster-broker-1 is the active controller and there are other pods to verify first, retrying after at least 250ms
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:388 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Will temporarily skip verifying pod my-cluster-broker-2/2 is up-to-date due to ForceableProblem: Pod my-cluster-broker-2 is the active controller and there are other pods to verify first, retrying after at least 250ms
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-1/1 was successful.
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-2/2 was successful.
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:51 WARN  KafkaMetadataStateManager:374 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
+----
+
+In the status of Kafka CR:
+
+[source, yaml,indent=0]
+----
+  conditions:
+    - lastTransitionTime: '2024-12-19T09:50:51.079412731Z'
+      message: The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
+      reason: KafkaMetadataStateWarning
+      status: 'True'
+      type: Warning
+----
+
+While the migration is going on, you can see the cluster changing the metadata state during the migration process from ZooKeeper to KRaftPostMigration, and then waiting for the user to finalize it.
+
+[source, yaml,indent=0]
+----
+oc get kafka my-cluster -n kafka -w
+NAME         DESIRED KAFKA REPLICAS   DESIRED ZK REPLICAS   READY   METADATA STATE   WARNINGS
+my-cluster   3                        3                             ZooKeeper
+my-cluster   3                        3                     True    KRaftMigration
+my-cluster   3                        3                     True    KRaftDualWriting
+my-cluster   3                        3                     True    KRaftPostMigration
+my-cluster   3                        3                     True    KRaftPostMigration   True
+----
+
+IMPORTANT: In the KRaftPostMigration state, the cluster is still working in “dual-write” mode and the user can validate that everything is working fine before deciding to finalize the migration or rolling back to use ZooKeeper. If the Kafka custom resource has the inter.broker.protocol.version and log.message.format.version parameters set in the spec.kafka.config section, and because they are not supported in KRaft, the operator reports warnings into the status (see WARNINGS column). The user has to remove the parameters at the end of the process causing an additional rolling of the nodes.
