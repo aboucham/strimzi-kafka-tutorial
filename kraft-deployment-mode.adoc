@@ -107,3 +107,28 @@ Status:
       status: 'True'
       type: NotReady
 ----
+
+You need to create a KafkaNodePool with the broker:
+
+[source, yaml,indent=0]
+----
+oc apply -f - <<EOF
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: broker
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  replicas: 3
+  roles:
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 10Gi
+        deleteClaim: false
+EOF
+----
