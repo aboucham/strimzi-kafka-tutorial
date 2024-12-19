@@ -95,3 +95,15 @@ EOF
 ----
 oc annotate k my-cluster strimzi.io/kraft="migration" --overwrite
 ----
+
+Status:
+
+[source, yaml,indent=0]
+----
+  conditions:
+    - lastTransitionTime: '2024-12-18T23:54:20.840636560Z'
+      message: 'The Kafka cluster my-cluster is invalid: [At least one KafkaNodePool with the broker role and at least one replica is required when KRaft mode is enabled]'
+      reason: InvalidResourceException
+      status: 'True'
+      type: NotReady
+----
