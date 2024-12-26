@@ -26,6 +26,13 @@ To use KRaft, you still need to use the `annotations` on the Kafka custom resour
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-dev-cluster.yaml
 ----
 
+Check the status of Kafka CR using the following command line:
+
+[source, yaml,indent=0]
+----
+oc get k dev-cluster -o yaml | yq .status.conditions
+----
+
 NOTE: The `.spec.zookeeper` section in the Kafka custom resource is ignored in `KRaft mode` and should be removed from the custom resource.
 The .spec.kafka.replicas property in the Kafka custom resource is ignored when node pools are used and should be removed from the custom resource.
 The .spec.kafka.storage section in the Kafka custom resource is ignored when node pools are used and should be removed from the custom resource.
