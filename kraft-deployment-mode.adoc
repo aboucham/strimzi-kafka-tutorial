@@ -125,7 +125,14 @@ Status:
       type: NotReady
 ----
 
-You need to create a KafkaNodePool with the broker:
+In the Streams Operator, the following log lines show:
+
+[source, yaml,indent=0]
+----
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-c7r9g strimzi-cluster-operator io.strimzi.operator.common.model.InvalidResourceException: The Kafka cluster my-cluster is invalid: [KafkaNodePool controller contains invalid roles configuration. In a ZooKeeper-based Kafka cluster, the KafkaNodePool role has to be always set only to the 'broker' role.]
+----
+
+Based on the above, you need to create a `KafkaNodePool` with the `broker`:
 
 [source, yaml,indent=0]
 ----
