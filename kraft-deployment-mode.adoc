@@ -54,9 +54,19 @@ oc get k dev-cluster -o yaml | yq .status.conditions
   type: Ready
 ----
 
+Clean your Kafka Cluster by removing the Kafka CR `dev-cluster`:
+
+[source, yaml,indent=0]
+----
+oc delete k dev-cluster
+kafka.kafka.strimzi.io "dev-cluster" deleted
+----
+
 == Migration from Zookeper to Kraft
 
 Migrate your Strimzi-operated cluster from ZooKeeper to KRaft
+
+First, we will deploy a Kafka cluster `my-cluster` Zookeper Based:
 
 [source, yaml,indent=0]
 ----
