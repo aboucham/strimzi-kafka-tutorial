@@ -59,7 +59,7 @@ Clean your Kafka Cluster by removing the Kafka CR `dev-cluster`:
 [source, yaml,indent=0]
 ----
 oc delete k dev-cluster
-kafka.kafka.strimzi.io "dev-cluster" deleted
+oc delete knp kafka
 ----
 
 == Migration from Zookeper to Kraft
