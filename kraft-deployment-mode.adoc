@@ -2,11 +2,196 @@
 
 Environment Setup:
 
-Streams for Apache Kafka 2.8.0-0 provided by Red Hat
+Streams for Apache Kafka 2.9.0-0 provided by Red Hat
+Streams for Apache Kafka Console 2.9.0-3 provided by Red Hat
 
 Prerequisites:
 
 Install Streams for Apache Kafka 2.8.0: from OperatorHub
+Install Streams for Apache Kafka Console 2.9.0-3 from OperatorHub
+
+== Migration from Zookeper to Kraft
+
+Migrate your Strimzi-operated cluster from ZooKeeper to KRaft
+
+First, we will deploy a Kafka cluster `my-cluster` Zookeper Based:
+
+[source, yaml,indent=0]
+----
+oc apply -f https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/refs/heads/main/examples/metrics/kafka-metrics.yaml
+----
+
+Deploy Streams Console
+
+----
+oc create -f - <<EOF
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: my-console
+spec:
+  hostname: my-cluster.apps.abouchama-fuse30.emea.aws.cee.support
+  kafkaClusters:
+    - name: my-cluster
+      namespace: strimzi
+      listener: plain
+EOF
+----
+
+=== Starting the migration to Kafka Node Pool:
+
+----
+oc apply -f - <<EOF
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: kafka
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  replicas: 3
+  roles:
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 100Gi
+        deleteClaim: false
+EOF
+----
+
+----
+oc annotate k my-cluster strimzi.io/node-pools="enabled" --overwrite
+oc annotate k my-cluster strimzi.io/kraft="disabled" --overwrite
+----
+
+WARNING:To preserve cluster data and the names of its nodes and resources, the node pool name must be kafka, and the strimzi.io/cluster label matches the Kafka resource name. Otherwise, nodes and resources are created with new names, including the persistent volume storage used by the nodes. Consequently, your previous data may not be available.
+
+----
+oc get knp
+NAME    DESIRED REPLICAS   ROLES        NODEIDS
+kafka   3                  ["broker"]   [0,1,2]
+----
+
+=== Starting the migration to Kraft:
+
+1. Deploy a `KafkaNodePool` CR to provision the KRaft controllers. 
+
+[source, yaml,indent=0]
+----
+oc apply -f - <<EOF
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: controller
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  replicas: 3
+  roles:
+    - controller
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 20Gi
+        deleteClaim: false
+EOF
+----
+
+2. Change the `strimzi.io/kraft` annotation on the `Kafka` CR from `disabled` to `migration` to initiate the process:
+
+[source, yaml,indent=0]
+----
+oc annotate k my-cluster strimzi.io/kraft="migration" --overwrite
+----
+
+Status:
+
+[source, yaml,indent=0]
+----
+oc get k my-cluster -o yaml | yq .status.conditions
+----
+
+[source, yaml,indent=0]
+----
+  conditions:
+    - lastTransitionTime: '2024-12-18T23:54:20.840636560Z'
+      message: 'The Kafka cluster my-cluster is invalid: [At least one KafkaNodePool with the broker role and at least one replica is required when KRaft mode is enabled]'
+      reason: InvalidResourceException
+      status: 'True'
+      type: NotReady
+----
+
+[source, yaml,indent=0]
+----
+oc get knp
+NAME         DESIRED REPLICAS   ROLES            NODEIDS
+controller   3                  ["controller"]   [3,4,5]
+kafka        3                  ["broker"]       [0,1,2]
+----
+
+With that, you will end up with the following list of pods:
+
+[source, yaml,indent=0]
+----
+oc get pods
+my-cluster-broker-0       0/1     Running   0          18s
+my-cluster-broker-1       1/1     Running   0          62s
+my-cluster-broker-2       1/1     Running   0          62s
+my-cluster-controller-3   1/1     Running   0          61s
+my-cluster-controller-4   1/1     Running   0          61s
+my-cluster-controller-5   1/1     Running   0          61s
+my-cluster-zookeeper-0    1/1     Running   0          10h
+my-cluster-zookeeper-1    1/1     Running   0          10h
+my-cluster-zookeeper-2    1/1     Running   0          10h
+----
+
+Log shows:
+
+[source, yaml,indent=0]
+----
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-0/0 was successful.
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:388 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Will temporarily skip verifying pod my-cluster-broker-1/1 is up-to-date due to ForceableProblem: Pod my-cluster-broker-1 is the active controller and there are other pods to verify first, retrying after at least 250ms
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:388 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Will temporarily skip verifying pod my-cluster-broker-2/2 is up-to-date due to ForceableProblem: Pod my-cluster-broker-2 is the active controller and there are other pods to verify first, retrying after at least 250ms
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-1/1 was successful.
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-2/2 was successful.
+amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:51 WARN  KafkaMetadataStateManager:374 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
+----
+
+In the status of Kafka CR:
+
+[source, yaml,indent=0]
+----
+oc get k my-cluster -o yaml | yq .status.conditions
+- lastTransitionTime: "2025-04-07T10:57:49.146557449Z"
+  message: The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
+  reason: KafkaMetadataStateWarning
+  status: "True"
+  type: Warning
+- lastTransitionTime: "2025-04-07T10:57:49.400019071Z"
+  status: "True"
+  type: Ready
+----
+
+While the migration is going on, you can see the cluster changing the metadata state during the migration process from ZooKeeper to KRaftPostMigration, and then waiting for the user to finalize it.
+
+[source, yaml,indent=0]
+----
+oc get kafka my-cluster -w
+NAME         DESIRED KAFKA REPLICAS   DESIRED ZK REPLICAS   READY   METADATA STATE   WARNINGS
+my-cluster   3                        3                             ZooKeeper
+my-cluster   3                        3                     True    KRaftMigration
+my-cluster   3                        3                     True    KRaftDualWriting
+my-cluster   3                        3                     True    KRaftPostMigration
+my-cluster   3                        3                     True    KRaftPostMigration   True
+----
+
+IMPORTANT: In the KRaftPostMigration state, the cluster is still working in “dual-write” mode and the user can validate that everything is working fine before deciding to finalize the migration or rolling back to use ZooKeeper. If the Kafka custom resource has the inter.broker.protocol.version and log.message.format.version parameters set in the spec.kafka.config section, and because they are not supported in KRaft, the operator reports warnings into the status (see WARNINGS column). The user has to remove the parameters at the end of the process causing an additional rolling of the nodes.
+
 
 == New Deployment of Kraft
 
@@ -61,168 +246,3 @@ Clean your Kafka Cluster by removing the Kafka CR `dev-cluster`:
 oc delete k dev-cluster
 oc delete knp kafka
 ----
-
-== Migration from Zookeper to Kraft
-
-Migrate your Strimzi-operated cluster from ZooKeeper to KRaft
-
-First, we will deploy a Kafka cluster `my-cluster` Zookeper Based:
-
-[source, yaml,indent=0]
-----
-oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-zk-my-cluster.yaml
-----
-
-=== Starting the migration:
-
-[source, yaml,indent=0]
-----
-oc annotate k my-cluster strimzi.io/node-pools="enabled"
-oc annotate k my-cluster strimzi.io/kraft="disabled"
-----
-
-1. Deploy a `KafkaNodePool` CR to provision the KRaft controllers. 
-
-[source, yaml,indent=0]
-----
-oc apply -f - <<EOF
-apiVersion: kafka.strimzi.io/v1beta2
-kind: KafkaNodePool
-metadata:
-  name: controller
-  labels:
-    strimzi.io/cluster: my-cluster
-spec:
-  replicas: 3
-  roles:
-    - controller
-  storage:
-    type: jbod
-    volumes:
-      - id: 0
-        type: persistent-claim
-        size: 10Gi
-        deleteClaim: false
-EOF
-----
-
-2. Change the `strimzi.io/kraft` annotation on the `Kafka` CR from `disabled` to `migration` to initiate the process:
-
-[source, yaml,indent=0]
-----
-oc annotate k my-cluster strimzi.io/kraft="migration" --overwrite
-----
-
-Status:
-
-[source, yaml,indent=0]
-----
-oc get k my-cluster -o yaml | yq .status.conditions
-----
-
-[source, yaml,indent=0]
-----
-  conditions:
-    - lastTransitionTime: '2024-12-18T23:54:20.840636560Z'
-      message: 'The Kafka cluster my-cluster is invalid: [At least one KafkaNodePool with the broker role and at least one replica is required when KRaft mode is enabled]'
-      reason: InvalidResourceException
-      status: 'True'
-      type: NotReady
-----
-
-In the Streams Operator, the following log lines show:
-
-[source, yaml,indent=0]
-----
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-c7r9g strimzi-cluster-operator io.strimzi.operator.common.model.InvalidResourceException: The Kafka cluster my-cluster is invalid: [KafkaNodePool controller contains invalid roles configuration. In a ZooKeeper-based Kafka cluster, the KafkaNodePool role has to be always set only to the 'broker' role.]
-----
-
-Based on the above, you need to create a `KafkaNodePool` with the `broker`:
-
-[source, yaml,indent=0]
-----
-oc apply -f - <<EOF
-apiVersion: kafka.strimzi.io/v1beta2
-kind: KafkaNodePool
-metadata:
-  name: broker
-  labels:
-    strimzi.io/cluster: my-cluster
-spec:
-  replicas: 3
-  roles:
-    - broker
-  storage:
-    type: jbod
-    volumes:
-      - id: 0
-        type: persistent-claim
-        size: 10Gi
-        deleteClaim: false
-EOF
-----
-
-This will end up with:
-
-[source, yaml,indent=0]
-----
- oc get knp
-NAME         DESIRED REPLICAS   ROLES                     NODEIDS
-broker       3                  ["broker"]                [0,1,2]
-controller   3                  ["controller"]            [3,4,5]
-----
-
-With that, you will end up with the following list of pods:
-
-[source, yaml,indent=0]
-----
-oc get pods
-my-cluster-broker-0       0/1     Running   0          18s
-my-cluster-broker-1       1/1     Running   0          62s
-my-cluster-broker-2       1/1     Running   0          62s
-my-cluster-controller-3   1/1     Running   0          61s
-my-cluster-controller-4   1/1     Running   0          61s
-my-cluster-controller-5   1/1     Running   0          61s
-my-cluster-zookeeper-0    1/1     Running   0          10h
-my-cluster-zookeeper-1    1/1     Running   0          10h
-my-cluster-zookeeper-2    1/1     Running   0          10h
-----
-
-Log shows:
-
-[source, yaml,indent=0]
-----
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-0/0 was successful.
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:388 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Will temporarily skip verifying pod my-cluster-broker-1/1 is up-to-date due to ForceableProblem: Pod my-cluster-broker-1 is the active controller and there are other pods to verify first, retrying after at least 250ms
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:388 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Will temporarily skip verifying pod my-cluster-broker-2/2 is up-to-date due to ForceableProblem: Pod my-cluster-broker-2 is the active controller and there are other pods to verify first, retrying after at least 250ms
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-1/1 was successful.
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-2/2 was successful.
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:51 WARN  KafkaMetadataStateManager:374 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
-----
-
-In the status of Kafka CR:
-
-[source, yaml,indent=0]
-----
-  conditions:
-    - lastTransitionTime: '2024-12-19T09:50:51.079412731Z'
-      message: The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
-      reason: KafkaMetadataStateWarning
-      status: 'True'
-      type: Warning
-----
-
-While the migration is going on, you can see the cluster changing the metadata state during the migration process from ZooKeeper to KRaftPostMigration, and then waiting for the user to finalize it.
-
-[source, yaml,indent=0]
-----
-oc get kafka my-cluster -n kafka -w
-NAME         DESIRED KAFKA REPLICAS   DESIRED ZK REPLICAS   READY   METADATA STATE   WARNINGS
-my-cluster   3                        3                             ZooKeeper
-my-cluster   3                        3                     True    KRaftMigration
-my-cluster   3                        3                     True    KRaftDualWriting
-my-cluster   3                        3                     True    KRaftPostMigration
-my-cluster   3                        3                     True    KRaftPostMigration   True
-----
-
-IMPORTANT: In the KRaftPostMigration state, the cluster is still working in “dual-write” mode and the user can validate that everything is working fine before deciding to finalize the migration or rolling back to use ZooKeeper. If the Kafka custom resource has the inter.broker.protocol.version and log.message.format.version parameters set in the spec.kafka.config section, and because they are not supported in KRaft, the operator reports warnings into the status (see WARNINGS column). The user has to remove the parameters at the end of the process causing an additional rolling of the nodes.
