@@ -34,7 +34,7 @@ spec:
     template:
       kafkaContainer:
         volumeMounts:
-          - mountPath: /tmp/newrelic/config
+          - mountPath: /mnt/newrelic/config
             name: newrelic-config-volume
             readOnly: true
       pod:
