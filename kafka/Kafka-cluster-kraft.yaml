@@ -51,8 +51,8 @@ spec:
           - mountPath: /mnt/newrelic/config
             name: newrelic-config-volume
             readOnly: true
-        pod:
-          volumes:
-            - configMap:
-                name: newrelic-config
-              name: newrelic-config-volume
+      pod:
+        volumes:
+          - configMap:
+              name: newrelic-config
+            name: newrelic-config-volume
