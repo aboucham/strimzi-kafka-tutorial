@@ -3,6 +3,9 @@ kind: Kafka
 metadata:
   name: kafka-cluster
   namespace: hz0v-uat-messaging
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
   labels:
     strimzi.io/cluster: kafka-cluster
     template: kafka-cluster
