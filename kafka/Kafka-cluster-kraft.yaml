@@ -11,6 +11,17 @@ spec:
     topicOperator: {}
     userOperator: {}
   kafka:
+    template:
+      kafkaContainer:
+        volumeMounts:
+          - mountPath: /mnt/newrelic/config
+            name: newrelic-config-volume
+            readOnly: true
+      pod:
+        volumes:
+          - configMap:
+              name: newrelic-config
+            name: newrelic-config-volume
     authorization:
       type: simple
     config:
@@ -45,14 +56,3 @@ spec:
         port: 9094
         tls: true
         type: route
-    template:
-      kafkaContainer:
-        volumeMounts:
-          - mountPath: /mnt/newrelic/config
-            name: newrelic-config-volume
-            readOnly: true
-      pod:
-        volumes:
-          - configMap:
-              name: newrelic-config
-            name: newrelic-config-volume
