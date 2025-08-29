@@ -1,0 +1,58 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: kafka-cluster
+  namespace: hz0v-uat-messaging
+  labels:
+    strimzi.io/cluster: kafka-cluster
+    template: kafka-cluster
+spec:
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+  kafka:
+    authorization:
+      type: simple
+    config:
+      auto.create.topics.enable: 'false'
+      default.replication.factor: 3
+      listener.security.protocol.map: 'PLAIN:PLAINTEXT,TLS:SASL_SSL,LISTENER1:SSL,PRODUCER:SSL'
+      log.retention.ms: 86400000
+      min.insync.replicas: 2
+      offsets.topic.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      transaction.state.log.replication.factor: 3
+    listeners:
+      - authentication:
+          type: scram-sha-512
+        name: plain
+        port: 9092
+        tls: false
+        type: internal
+      - authentication:
+          type: scram-sha-512
+        name: tls
+        port: 9095
+        tls: true
+        type: internal
+      - authentication:
+          type: tls
+        name: producer
+        port: 9093
+        tls: true
+        type: internal
+      - name: listener1
+        port: 9094
+        tls: true
+        type: route
+    template:
+      kafkaContainer:
+        volumeMounts:
+          - mountPath: /mnt/newrelic/config
+            name: newrelic-config-volume
+            readOnly: true
+       pod:
+        volumes:
+          - configMap:
+              name: newrelic-config
+            name: newrelic-config-volume
