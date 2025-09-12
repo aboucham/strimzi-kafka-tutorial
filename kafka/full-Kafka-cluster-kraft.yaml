@@ -63,9 +63,7 @@ spec:
       transaction.state.log.min.isr: 2
       transaction.state.log.replication.factor: 3
     listeners:
-      - authentication:
-          type: scram-sha-512
-        name: plain
+      - name: plain
         port: 9092
         tls: false
         type: internal
@@ -85,14 +83,3 @@ spec:
         port: 9094
         tls: true
         type: route
-    template:
-      kafkaContainer:
-        volumeMounts:
-          - mountPath: /mnt/newrelic/config
-            name: newrelic-config-volume
-            readOnly: true
-      pod:
-        volumes:
-          - configMap:
-              name: newrelic-config
-            name: newrelic-config-volume
