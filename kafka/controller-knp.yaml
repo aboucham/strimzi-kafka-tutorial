@@ -2,7 +2,6 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
   name: controller
-  namespace: hz0v-uat-messaging
   labels:
     strimzi.io/cluster: kafka-cluster
     template: kafka-cluster
