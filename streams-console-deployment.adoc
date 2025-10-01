@@ -2,8 +2,8 @@
 
 Environment Setup:
 
-Streams for Apache Kafka 3.0.1-2 provided by Red Hat
-Streams for Apache Kafka Console 3.0.1-3 provided by Red Hat
+- Streams for Apache Kafka 3.0.1-2 provided by Red Hat
+- Streams for Apache Kafka Console 3.0.1-3 provided by Red Hat
 
 == Install Kafka Cluster 
 
@@ -11,23 +11,33 @@ First, we will deploy a Kafka cluster `kafka-cluster` Kraft Based:
 
 [source, yaml,indent=0]
 ----
-oc apply -f https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/refs/heads/main/examples/metrics/kafka-metrics.yaml
+oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/full-Kafka-cluster-kraft.yaml
 ----
 
-Deploy Streams Console
+Deploy Streams Console:
+
+- Plain listener connection:
+----
+oc project strimzi
+
+export KAFKA_CR_NAME="kafka-console"
+export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai.emea.aws.cee.support"
+export NAMESPACE="strimzi"
+export KAFKA_LISTENER_NAME="plain"
+----
 
 ----
-oc create -f - <<EOF
+cat <<'EOF' | envsubst | oc apply -f -
 apiVersion: console.streamshub.github.com/v1alpha1
 kind: Console
 metadata:
   name: my-console
 spec:
-  hostname: my-cluster.apps.abouchama-fuse30.emea.aws.cee.support
+  hostname: $UI_CONSOLE_URL
   kafkaClusters:
-    - name: my-cluster
-      namespace: strimzi
-      listener: plain
+    - name: $KAFKA_CR_NAME
+      namespace: $NAMESPACE
+      listener: $KAFKA_LISTENER_NAME
 EOF
 ----
 
