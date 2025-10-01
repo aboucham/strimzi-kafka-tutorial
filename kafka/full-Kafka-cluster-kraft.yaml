@@ -67,15 +67,13 @@ spec:
         port: 9092
         tls: false
         type: internal
-      - authentication:
-          type: scram-sha-512
-        name: tls
+      - name: tls
         port: 9095
         tls: true
         type: internal
       - authentication:
-          type: tls
-        name: producer
+          type: scram-sha-512
+        name: tlsscram
         port: 9093
         tls: true
         type: internal
