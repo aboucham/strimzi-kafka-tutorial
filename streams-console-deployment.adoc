@@ -20,8 +20,8 @@ Deploy Streams Console:
 ----
 oc project strimzi
 
-export KAFKA_CR_NAME="kafka-console"
-export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai.emea.aws.cee.support"
+export KAFKA_CR_NAME="kafka-cluster"
+export UI_CONSOLE_URL="my-console-ui.apps.abouchama-ai.emea.aws.cee.support"
 export NAMESPACE="strimzi"
 export KAFKA_LISTENER_NAME="plain"
 ----
