@@ -16,7 +16,7 @@ oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/re
 
 1# Deploy Streams Console:
 
-- Plain listener connection with Anonymous User since credentials is provided:
+- `Plain` listener connection with Anonymous User since credentials is provided:
 
 ----
 oc project strimzi
@@ -49,7 +49,7 @@ EOF
 ----
 
 - Prompt authentication page
-- Plain listener connection with Anonymous User since credentials is provided:
+- `Plain` listener connection with Anonymous User since credentials is provided:
 
 ----
 cat <<'EOF' | envsubst | oc apply -f -
@@ -66,8 +66,45 @@ spec:
 EOF
 ----
 
+- Prompt authentication page
+- `tls` listener connection with Anonymous User since credentials is provided:
 
+export KAFKA_LISTENER_NAME="tls"
 
+----
+cat <<'EOF' | envsubst | oc apply -f -
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: my-console
+spec:
+  hostname: $UI_CONSOLE_URL
+  kafkaClusters:
+    - name: $KAFKA_CR_NAME
+      namespace: $NAMESPACE
+      listener: $KAFKA_LISTENER_NAME
+EOF
+----
+
+- Prompt authentication page
+- `tlsscram` listener + authentication sha-scram512 User since credentials is provided:
+
+export KAFKA_LISTENER_NAME="tlsscram"
+
+----
+cat <<'EOF' | envsubst | oc apply -f -
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: my-console
+spec:
+  hostname: $UI_CONSOLE_URL
+  kafkaClusters:
+    - name: $KAFKA_CR_NAME
+      namespace: $NAMESPACE
+      listener: $KAFKA_LISTENER_NAME
+EOF
+----
 
 ----------------
 
