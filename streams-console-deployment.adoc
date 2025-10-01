@@ -179,19 +179,119 @@ oc create secret generic my-oidc-secret \
 
 
 
-[source, yaml,indent=0]
-----
-----
+## TroubleShooting
 
-With that, you will end up with the following list of pods:
-
-[source, yaml,indent=0]
-----
-----
+#### 1- Error: 'self-signed certificate'
 
 Log shows:
 
 [source, yaml,indent=0]
 ----
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-0/0 was successful.
+\[next-auth\]\[error\]\[SIGNIN_OAUTH_ERROR\]  
+https://next-auth.js.org/errors#signin_oauth_error self-signed certificate {  
+error: {  
+message: 'self-signed certificate',  
+stack: 'Error: self-signed certificate\\n' +  
+' at TLSSocket.onConnectSecure (node:\_tls_wrap:1679:34)\\n' +  
+' at TLSSocket.emit (node:events:519:28)\\n' +  
+' at TLSSocket.\_finishInit (node:\_tls_wrap:1078:8)\\n' +  
+' at ssl.onhandshakedone (node:\_tls_wrap:864:12)\\n' +  
+' at TLSWrap.callbackTrampoline (node:internal/async_hooks:130:17)',  
+name: 'Error'  
+},  
+providerId: 'oidc',  
+message: 'self-signed certificate'  
+}
 ----
+
+[source, yaml,indent=0]
+----
+rm tls.crt
+oc extract secret/example-tls-secret -n keycloak --confirm
+oc create secret generic oidc-ca-certificates --from-file=tls.crt
+----
+
+[source, yaml,indent=0]
+----
+  trustStore:
+    content:
+      valueFrom:
+        secretKeyRef:
+          key: tls.crt
+          name: oidc-ca-certificates
+----
+
+#### 2 - Error: 'Invalid scopes: openid email profile groups'
+
+
+[source, yaml,indent=0]
+----
+\[next-auth\]\[error\]\[OAUTH_CALLBACK_HANDLER_ERROR\]  
+https://next-auth.js.org/errors#oauth_callback_handler_error invalid_scope {  
+error: {  
+message: 'invalid_scope',  
+stack: 'Error: invalid_scope\\n' +  
+' at c (/app/.next/server/chunks/3123.js:1:120823)\\n' +  
+' at Object.l (/app/.next/server/chunks/3123.js:25:799)\\n' +  
+' at m (/app/.next/server/chunks/3123.js:1:104470)\\n' +  
+' at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\\n' +  
+' at async o (/app/.next/server/chunks/3123.js:25:19768)\\n' +  
+' at async e.length.t (/app/.next/server/chunks/3123.js:25:21258)\\n' +  
+' at async /app/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38411\\n' +  
+' at async e_.execute (/app/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:27880)\\n' +  
+' at async e_.handle (/app/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:39943)\\n' +  
+' at async doRender (/app/node_modules/next/dist/server/base-server.js:1366:42)',  
+name: 'Error'  
+},  
+error_description: 'Invalid scopes: openid email profile groups',  
+providerId: 'oidc',  
+message: 'invalid_scope'  
+}
+----
+
+In KeyCloak, Add scope as requested:  
+- Create Client Scope:  "scope": "profile email groups oidc openid"  
+- Assign the above scopes to Client Id `console-streams-ui`
+
+#### 3 - Error: "Not Authorized","detail":"Insufficient permissions to resource or action" "status":"403" "code":"4031
+
+
+[source, yaml,indent=0]
+----
+\[next-auth\]\[error\]\[JWT_SESSION_ERROR\]  
+https://next-auth.js.org/errors#jwt_session_error fetch failed {  
+message: 'fetch failed',  
+stack: 'TypeError: fetch failed\\n' +  
+' at node:internal/deps/undici/undici:13510:13\\n' +  
+' at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\\n' +  
+' at async c.getTokenEndpoint (/app/.next/server/chunks/6111.js:1:8235)\\n' +  
+' at async c.refreshToken (/app/.next/server/chunks/6111.js:1:8950)\\n' +  
+' at async Object.i (/app/.next/server/chunks/3123.js:25:6957)\\n' +  
+' at async m (/app/.next/server/chunks/3123.js:1:103909)\\n' +  
+' at async s (/app/.next/server/chunks/3123.js:25:20856)\\n' +  
+' at async z (/app/.next/server/chunks/6111.js:1:15905)\\n' +  
+' at async p (/app/.next/server/chunks/6111.js:1:626)\\n' +  
+' at async z (/app/.next/server/chunks/6111.js:1:885)',  
+name: 'TypeError'  
+}
+----
+
+- Configure a Client Scope Mapper:
+Keycloak doesn't typically include user groups in the JWT by default; you need to configure a Mapper to explicitly add them to the token.
+
+Navigate to Clients and select the client your application is using (e.g., the one that manages tokens for the console-api).
+- Go to the Client Scopes tab.
+- Select the client's dedicated client scope: `groups`
+- In the selected client scope, go to the Mappers tab.
+- Click Add Mapper → By Configuration → Group Membership.
+- Configure the mapper with the following or similar settings:
+
+Name: groups (or a descriptive name like kafka-groups-mapper)
+Mapper Type: `Group Membership`
+Token Claim Name: `groups` (This is the critical field; it's the claim name that will appear in the JWT).
+Full group path: `OFF` (Unless your application expects the full path, e.g., /kafka-admins. Turning this off usually outputs just the group name, which is often preferred.)
+Add to ID token: `ON` (If your application uses the ID token for authorization)
+Add to access token: `ON` (Most common for API authorization)
+Add to userinfo: `ON` (Optional, but often useful)
+
+Click Save.
