@@ -2,6 +2,7 @@ apiVersion: console.streamshub.github.com/v1alpha1
 kind: Console
 metadata:
   name: example
+  namespace: strimzi
 spec:
   hostname: example-console.apps.abouchama-ai.emea.aws.cee.support
   kafkaClusters:
