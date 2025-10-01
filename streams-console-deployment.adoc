@@ -128,7 +128,7 @@ oc new-project keycloak
 oc project keycloak
 -----
 
-# Deploy KeyCloak Subscription:
+#### Deploy KeyCloak Subscription:
 
 ----
 oc apply -f - <<EOF
@@ -149,13 +149,33 @@ spec:
 EOF
 ----
 
-# Deploy Keycloak 26 Instance:
+#### Deploy Keycloak 26 Instance:
 
 ----
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/keycloak/keycloak-install.yaml
 ----
 
+get admin user/pwd
+kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.username}' | base64 --decode
+kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.password}' | base64 --decode
 
+
+- Create real: console-streams
+- Create a client: console-streams-ui
+- Enable client authentication (Credentials will appear):
+copy client secret in credentials: -client secret: `gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje`
+
+
+- Create secret called : `my-oidc-secret`
+
+```
+oc create secret generic my-oidc-secret \
+  --from-literal=client-secret=gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje
+```
+
+- Create two groups: `kafka-admins` `kafka-devs`  
+- Create realm roles:  `administrators` `developers`
+- Create 2 users: `admin` `dev`
 
 
 
