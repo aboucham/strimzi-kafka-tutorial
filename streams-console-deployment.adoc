@@ -16,8 +16,8 @@ oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/re
 
 1# Deploy Streams Console:
 
-- Prompt authentication page
-- Plain listener connection:
+- Plain listener connection with Anonymous User since credentials is provided:
+
 ----
 oc project strimzi
 
@@ -48,70 +48,30 @@ spec:
 EOF
 ----
 
+- Prompt authentication page
+- Plain listener connection with Anonymous User since credentials is provided:
 
 ----
-oc annotate k my-cluster strimzi.io/node-pools="enabled" --overwrite
-oc annotate k my-cluster strimzi.io/kraft="disabled" --overwrite
-----
-
-WARNING:To preserve cluster data and the names of its nodes and resources, the node pool name must be kafka, and the strimzi.io/cluster label matches the Kafka resource name. Otherwise, nodes and resources are created with new names, including the persistent volume storage used by the nodes. Consequently, your previous data may not be available.
-
-----
-oc get knp
-NAME    DESIRED REPLICAS   ROLES        NODEIDS
-kafka   3                  ["broker"]   [0,1,2]
-----
-
-=== Starting the migration to Kraft:
-
-1. Deploy a `KafkaNodePool` CR to provision the KRaft controllers. 
-
-[source, yaml,indent=0]
-----
-oc apply -f - <<EOF
-apiVersion: kafka.strimzi.io/v1beta2
-kind: KafkaNodePool
+cat <<'EOF' | envsubst | oc apply -f -
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
 metadata:
-  name: controller
-  labels:
-    strimzi.io/cluster: my-cluster
+  name: my-console
 spec:
-  replicas: 3
-  roles:
-    - controller
-  storage:
-    type: jbod
-    volumes:
-      - id: 0
-        type: persistent-claim
-        size: 20Gi
-        deleteClaim: false
+  hostname: $UI_CONSOLE_URL
+  kafkaClusters:
+    - name: $KAFKA_CR_NAME
+      namespace: $NAMESPACE
+      listener: $KAFKA_LISTENER_NAME
 EOF
 ----
 
-2. Change the `strimzi.io/kraft` annotation on the `Kafka` CR from `disabled` to `migration` to initiate the process:
 
-[source, yaml,indent=0]
-----
-oc annotate k my-cluster strimzi.io/kraft="migration" --overwrite
-----
 
-Status:
 
-[source, yaml,indent=0]
-----
-oc get k my-cluster -o yaml | yq .status.conditions
-----
+----------------
 
-[source, yaml,indent=0]
-----
-  conditions:
-    - lastTransitionTime: '2024-12-18T23:54:20.840636560Z'
-      message: 'The Kafka cluster my-cluster is invalid: [At least one KafkaNodePool with the broker role and at least one replica is required when KRaft mode is enabled]'
-      reason: InvalidResourceException
-      status: 'True'
-      type: NotReady
-----
+
 
 [source, yaml,indent=0]
 ----
@@ -149,87 +109,3 @@ amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 
 amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:51 WARN  KafkaMetadataStateManager:374 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
 ----
 
-In the status of Kafka CR:
-
-[source, yaml,indent=0]
-----
-oc get k my-cluster -o yaml | yq .status.conditions
-- lastTransitionTime: "2025-04-07T10:57:49.146557449Z"
-  message: The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
-  reason: KafkaMetadataStateWarning
-  status: "True"
-  type: Warning
-- lastTransitionTime: "2025-04-07T10:57:49.400019071Z"
-  status: "True"
-  type: Ready
-----
-
-While the migration is going on, you can see the cluster changing the metadata state during the migration process from ZooKeeper to KRaftPostMigration, and then waiting for the user to finalize it.
-
-[source, yaml,indent=0]
-----
-oc get kafka my-cluster -w
-NAME         DESIRED KAFKA REPLICAS   DESIRED ZK REPLICAS   READY   METADATA STATE   WARNINGS
-my-cluster   3                        3                             ZooKeeper
-my-cluster   3                        3                     True    KRaftMigration
-my-cluster   3                        3                     True    KRaftDualWriting
-my-cluster   3                        3                     True    KRaftPostMigration
-my-cluster   3                        3                     True    KRaftPostMigration   True
-----
-
-IMPORTANT: In the KRaftPostMigration state, the cluster is still working in “dual-write” mode and the user can validate that everything is working fine before deciding to finalize the migration or rolling back to use ZooKeeper. If the Kafka custom resource has the inter.broker.protocol.version and log.message.format.version parameters set in the spec.kafka.config section, and because they are not supported in KRaft, the operator reports warnings into the status (see WARNINGS column). The user has to remove the parameters at the end of the process causing an additional rolling of the nodes.
-
-
-== New Deployment of Kraft
-
-IMPORTANT: KRaft can only be used with a Kafka cluster that uses `KafkaNodePool` resources.
-
-To deploy a Kafka cluster in KRaft mode, you must use the KafkaNodePool resources.
-
-[source, yaml,indent=0]
-----
-oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/KafkaNodePool-dev-cluster.yaml
-----
-
-To use KRaft, you still need to use the `annotations` on the Kafka custom resource (`strimzi.io/kraft: enabled`)
-
-[source, yaml,indent=0]
-----
-oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-dev-cluster.yaml
-----
-
-Check the status of Kafka CR using the following command line:
-
-[source, yaml,indent=0]
-----
-oc get k dev-cluster -o yaml | yq .status.conditions
-----
-
-NOTE: The `.spec.zookeeper` section in the Kafka custom resource is ignored in `KRaft mode` and should be removed from the custom resource.
-The .spec.kafka.replicas property in the Kafka custom resource is ignored when node pools are used and should be removed from the custom resource.
-The .spec.kafka.storage section in the Kafka custom resource is ignored when node pools are used and should be removed from the custom resource.
-inter.broker.protocol.version is not used in KRaft-based Kafka clusters and should be removed from the Kafka custom resource.
-
-[source, yaml,indent=0]
-----
-oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-kraft-dev-cluster.yaml
-----
-
-[source, yaml,indent=0]
-----
-oc get k dev-cluster -o yaml | yq .status.conditions
-----
-[source, yaml,indent=0]
-----
-- lastTransitionTime: "2024-12-18T11:41:17.401143148Z"
-  status: "True"
-  type: Ready
-----
-
-Clean your Kafka Cluster by removing the Kafka CR `dev-cluster`:
-
-[source, yaml,indent=0]
-----
-oc delete k dev-cluster
-oc delete knp kafka
-----
