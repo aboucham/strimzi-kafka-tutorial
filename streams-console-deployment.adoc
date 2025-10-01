@@ -14,8 +14,9 @@ First, we will deploy a Kafka cluster `kafka-cluster` Kraft Based:
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/full-Kafka-cluster-kraft.yaml
 ----
 
-Deploy Streams Console:
+1# Deploy Streams Console:
 
+- Prompt authentication page
 - Plain listener connection:
 ----
 oc project strimzi
@@ -24,6 +25,9 @@ export KAFKA_CR_NAME="kafka-cluster"
 export UI_CONSOLE_URL="my-console-ui.apps.abouchama-ai.emea.aws.cee.support"
 export NAMESPACE="strimzi"
 export KAFKA_LISTENER_NAME="plain"
+# Name of the `KafkaUser` resource used to connect to Kafka
+# This is optional if properties are used to configure the user
+export KAFKA_CONSOLE_USER="console-kafka-user"
 ----
 
 ----
@@ -38,6 +42,9 @@ spec:
     - name: $KAFKA_CR_NAME
       namespace: $NAMESPACE
       listener: $KAFKA_LISTENER_NAME
+      credentials:
+        kafkaUser:
+          name: $KAFKA_CONSOLE_USER
 EOF
 ----
 
