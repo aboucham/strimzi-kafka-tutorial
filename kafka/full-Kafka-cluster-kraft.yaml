@@ -263,3 +263,54 @@ data:
     - pattern: "kafka.server<type=broker-metadata-metrics><>(.+):"
       name: kafka_server_brokermetadatametrics_$1
       type: GAUGE
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: console-kafka-user
+  namespace: strimzi
+data:
+  password: bXlwYXNzd29yZA==
+  sasl.jaas.config: b3JnLmFwYWNoZS5rYWZrYS5jb21tb24uc2VjdXJpdHkuc2NyYW0uU2NyYW1Mb2dpbk1vZHVsZSByZXF1aXJlZCB1c2VybmFtZT0iY29uc29sZS1rYWZrYS11c2VyIiBwYXNzd29yZD0ibXlwYXNzd29yZCI7
+type: Opaque
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  labels:
+    strimzi.io/cluster: kafka-cluster
+  name: console-kafka-user
+  namespace: strimzi
+spec:
+  authentication:
+    password:
+      valueFrom:
+        secretKeyRef:
+          key: password
+          name: console-kafka-user
+    type: scram-sha-512
+  authorization:
+    acls:
+      - operations:
+          - Describe
+          - DescribeConfigs
+        resource:
+          name: '*'
+          patternType: literal
+          type: cluster
+      - operations:
+          - Read
+          - Describe
+          - DescribeConfigs
+        resource:
+          name: '*'
+          patternType: literal
+          type: topic
+      - operations:
+          - Read
+          - Describe
+        resource:
+          name: '*'
+          patternType: literal
+          type: group
+    type: simple
