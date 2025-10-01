@@ -5,6 +5,40 @@ Environment Setup:
 - Streams for Apache Kafka 3.0.1-2 provided by Red Hat
 - Streams for Apache Kafka Console 3.0.1-3 provided by Red Hat
 
+----
+oc apply -f - <<EOF
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/amq-streams.openshift-operators: ""
+  name: amq-streams
+  namespace: openshift-operators
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: amq-streams
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: amqstreams.v3.0.0-13
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/amq-streams-console.openshift-operators: ""
+  name: amq-streams-console
+  namespace: openshift-operators
+spec:
+  channel: alpha
+  installPlanApproval: Automatic
+  name: amq-streams-console
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: amq-streams-console.v3.0.0-10
+EOF
+----
+
 == Install Kafka Cluster 
 
 First, we will deploy a Kafka cluster `kafka-cluster` Kraft Based:
@@ -14,7 +48,7 @@ First, we will deploy a Kafka cluster `kafka-cluster` Kraft Based:
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/full-Kafka-cluster-kraft.yaml
 ----
 
-1# Deploy Streams Console:
+== Deploy Streams Console:
 
 - `Plain` listener connection with Anonymous User since credentials is provided:
 
@@ -86,77 +120,53 @@ spec:
 EOF
 ----
 
-- Prompt authentication page
-- `tlsscram` listener + authentication sha-scram512 User since credentials is provided:
+== Streams Console OIDC
+=== Deploy KeyCloak 26 
 
-export KAFKA_LISTENER_NAME="tlsscram"
+-----
+oc new-project keycloak
+oc project keycloak
+-----
+
+# Deploy KeyCloak Subscription:
 
 ----
-cat <<'EOF' | envsubst | oc apply -f -
-apiVersion: console.streamshub.github.com/v1alpha1
-kind: Console
+oc apply -f - <<EOF
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
 metadata:
-  name: my-console
+  labels:
+    operators.coreos.com/rhbk-operator.keycloak: ""
+  name: rhbk-operator
+  namespace: keycloak
 spec:
-  hostname: $UI_CONSOLE_URL
-  kafkaClusters:
-    - name: $KAFKA_CR_NAME
-      namespace: $NAMESPACE
-      listener: $KAFKA_LISTENER_NAME
+  channel: stable-v26.2
+  installPlanApproval: Automatic
+  name: rhbk-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: rhbk-operator.v26.2.9-opr.1
 EOF
 ----
 
+# Deploy Keycloak 26 Instance:
+
 ----
-cat <<'EOF' | envsubst | oc apply -f -
-apiVersion: console.streamshub.github.com/v1alpha1
-kind: Console
-metadata:
-  name: my-console
-spec:
-  hostname: $UI_CONSOLE_URL
-  kafkaClusters:
-    - name: $KAFKA_CR_NAME
-      namespace: $NAMESPACE
-      listener: $KAFKA_LISTENER_NAME
-      credentials:
-        kafkaUser:
-          name: $KAFKA_CONSOLE_USER
-EOF
+oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/keycloak/keycloak-install.yaml
 ----
 
 
-
-
-
-
-
-
-----------------
 
 
 
 [source, yaml,indent=0]
 ----
-oc get knp
-NAME         DESIRED REPLICAS   ROLES            NODEIDS
-controller   3                  ["controller"]   [3,4,5]
-kafka        3                  ["broker"]       [0,1,2]
 ----
 
 With that, you will end up with the following list of pods:
 
 [source, yaml,indent=0]
 ----
-oc get pods
-my-cluster-broker-0       0/1     Running   0          18s
-my-cluster-broker-1       1/1     Running   0          62s
-my-cluster-broker-2       1/1     Running   0          62s
-my-cluster-controller-3   1/1     Running   0          61s
-my-cluster-controller-4   1/1     Running   0          61s
-my-cluster-controller-5   1/1     Running   0          61s
-my-cluster-zookeeper-0    1/1     Running   0          10h
-my-cluster-zookeeper-1    1/1     Running   0          10h
-my-cluster-zookeeper-2    1/1     Running   0          10h
 ----
 
 Log shows:
@@ -164,10 +174,4 @@ Log shows:
 [source, yaml,indent=0]
 ----
 amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-0/0 was successful.
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:49 INFO  KafkaRoller:388 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Will temporarily skip verifying pod my-cluster-broker-1/1 is up-to-date due to ForceableProblem: Pod my-cluster-broker-1 is the active controller and there are other pods to verify first, retrying after at least 250ms
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:388 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Will temporarily skip verifying pod my-cluster-broker-2/2 is up-to-date due to ForceableProblem: Pod my-cluster-broker-2 is the active controller and there are other pods to verify first, retrying after at least 250ms
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-1/1 was successful.
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:50 INFO  KafkaRoller:744 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): Dynamic update of pod my-cluster-broker-2/2 was successful.
-amq-streams-cluster-operator-v2.8.0-0-6d966f74f5-f5prd strimzi-cluster-operator 2024-12-19 09:50:51 WARN  KafkaMetadataStateManager:374 - Reconciliation #8319(timer) Kafka(kraft/my-cluster): The strimzi.io/kraft annotation can't be set to 'migration' or 'disabled' in the post-migration. You can use 'rollback' value to come back to ZooKeeper. Use the 'enabled' value to finalize migration instead.
 ----
-
