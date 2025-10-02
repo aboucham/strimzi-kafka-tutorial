@@ -246,19 +246,24 @@ export DEV_ROLE=developers
 
 *NOTE*: Replace `KeyCloak host` with your actual `KeyCloak route` and the same for `UI_CONSOLE_URL`.
 
+[source, bash]
 ----
 curl -sL https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/streams-console-oidc.yaml | \
 envsubst | \
 oc apply -f -
 ----
 
-## TroubleShooting
+== Troubleshooting Specific Issues
 
-#### 1- Error: 'self-signed certificate'
+Here are solutions for common issues encountered during the `OIDC` `Streams Console` deployment.
+
+=== Error: 'self-signed certificate'
+
+This error typically occurs when the Streams Console tries to communicate with KeyCloak (e.g., during the sign-in flow) and doesn't trust the certificate Authority (CA) that issued the KeyCloak server's certificate.
 
 Log shows:
 
-[source, yaml,indent=0]
+[source, json,indent=0]
 ----
 \[next-auth\]\[error\]\[SIGNIN_OAUTH_ERROR\]  
 https://next-auth.js.org/errors#signin_oauth_error self-signed certificate {  
@@ -277,22 +282,34 @@ message: 'self-signed certificate'
 }
 ----
 
-[source, yaml,indent=0]
-----
-rm tls.crt
-oc extract secret/example-tls-secret -n keycloak --confirm
-oc create secret generic oidc-ca-certificates --from-file=tls.crt
-----
+*Solution*: *Inject KeyCloak's CA into the Console Trust Store*
 
-[source, yaml,indent=0]
-----
+1- Extract the KeyCloak service certificate (assuming it's stored in a secret named `example-tls-secret` in the `keycloak` namespace).
+
+   [source, bash]
+   ----
+   rm tls.crt
+   oc extract secret/example-tls-secret -n keycloak --confirm
+   ----
+
+2- Create a secret in the `strimzi` namespace containing the certificate.
+
+   [source, bash]
+   ----
+   oc create secret generic oidc-ca-certificates --from-file=tls.crt
+   ----
+
+3- Update your *Console* custom resource (`CR`) to include a `trustStore` reference to this secret.
+
+   [source, yaml,indent=0]
+   ----
   trustStore:
     content:
       valueFrom:
         secretKeyRef:
           key: tls.crt
           name: oidc-ca-certificates
-----
+   ----
 
 #### 2 - Error: 'Invalid scopes: openid email profile groups'
 
