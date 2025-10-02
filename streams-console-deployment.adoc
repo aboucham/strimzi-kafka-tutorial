@@ -63,10 +63,13 @@ oc project strimzi
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/full-Kafka-cluster-kraft.yaml
 ----
 
-== Deploy Streams Console:
+== Deploy Streams Console (Non-OIDC Examples)
 
-- `Plain` listener connection with Anonymous User since credentials is provided:
+=== Console with plain Listener and Explicit KafkaUser
 
+This configuration uses a `Plain` listener and explicitly references a `KafkaUser` resource for connection.
+
+[source, bash]
 ----
 oc project strimzi
 
@@ -79,6 +82,7 @@ export KAFKA_LISTENER_NAME="plain"
 export KAFKA_CONSOLE_USER="console-kafka-user"
 ----
 
+[source, bash]
 ----
 cat <<'EOF' | envsubst | oc apply -f -
 apiVersion: console.streamshub.github.com/v1alpha1
@@ -97,9 +101,11 @@ spec:
 EOF
 ----
 
-- Prompt authentication page
-- `Plain` listener connection with Anonymous User since credentials is provided:
+=== Console with `plain` Listener (`Anonymous/Prompt Auth`)
 
+This configuration omits the credentials section, which may prompt for credentials in the UI or rely on anonymous access (depending on Kafka cluster setup).
+
+[source, bash]
 ----
 cat <<'EOF' | envsubst | oc apply -f -
 apiVersion: console.streamshub.github.com/v1alpha1
@@ -115,11 +121,16 @@ spec:
 EOF
 ----
 
-- Prompt authentication page
-- `tls` listener connection with Anonymous User since credentials is provided:
+=== Console with `tls` Listener (`Anonymous/Prompt Auth`)
 
+This configuration uses a `tls` listener. Ensure the Kafka cluster is configured for TLS.
+
+[source, bash]
+----
 export KAFKA_LISTENER_NAME="tls"
+----
 
+[source, bash]
 ----
 cat <<'EOF' | envsubst | oc apply -f -
 apiVersion: console.streamshub.github.com/v1alpha1
@@ -135,17 +146,24 @@ spec:
 EOF
 ----
 
-== Streams Console OIDC
-=== Deploy KeyCloak 26 
+== Deploy Streams Console with OIDC (KeyCloak)
 
+This section covers setting up *KeyCloak* as an *OpenID Connect (OIDC)* provider and configuring the Streams Console to use it for authentication.
+
+=== Deploy KeyCloak 26
+
+Create a new project and deploy the KeyCloak Operator.
+
+[source, bash]
 -----
 oc new-project keycloak
 oc project keycloak
 -----
 
-#### Deploy KeyCloak Subscription:
+Deploy KeyCloak Subscription:
 
-----
+[source, bash]
+-----
 oc apply -f - <<EOF
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -164,18 +182,31 @@ spec:
 EOF
 ----
 
-#### Deploy Keycloak 26 Instance:
+Deploy Keycloak 26 Instance:
 
+[source, bash]
 ----
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/keycloak/keycloak-install.yaml
 ----
 
-get admin user/pwd:
+Retrieve the initial `admin` credentials:
 
+[source, bash]
 ----
 kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.username}' | base64 --decode
 kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.password}' | base64 --decode
 ----
+
+=== KeyCloak Configuration Steps
+
+1- *Create Realm*: Create a new realm called `console-streams`.
+
+2- *Create Client*:
+   - Create a client ID: `console-streams-ui`.
+   - Enable *Client authentication* to make the *Credentials* menu appear.
+   - Copy the *Client Secret* (Example: `gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje`).
+
+3- *Create OIDC Secret*: Create an OpenShift secret for the Client Secret in the strimzi namespace.
 
 - Create `realm`: `console-streams`
 - Create a `client Id`: `console-streams-ui`
