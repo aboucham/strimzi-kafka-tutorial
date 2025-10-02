@@ -199,6 +199,26 @@ kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.pass
 
 === KeyCloak Configuration Steps
 
+1.  **Create Realm:** Create a new realm called `console-streams`.
+2.  **Create Client:**
+    * Create a client ID: `console-streams-ui`.
+    * Enable **Client authentication** to make the **Credentials** menu appear.
+    * Copy the **Client Secret** (Example: `gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje`).
+3.  **Create OIDC Secret:** Create an OpenShift secret for the Client Secret in the `strimzi` namespace.
+
+[source, bash]
+----
+oc create secret generic my-oidc-secret \
+  --from-literal=client-secret=gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje
+----
+
+4.  **Create Groups & Roles:**
+    * Create two **Groups**: `kafka-admins` and `kafka-devs`.
+    * Create two **Realm Roles**: `administrators` and `developers`.
+5.  **Create Users:** Create two **Users**: `admin` and `dev`. Assign them to the respective groups and roles.
+
+=== KeyCloak Configuration Steps
+
 1- *Create Realm*: Create a new realm called `console-streams`.
 
 2- *Create Client*:
