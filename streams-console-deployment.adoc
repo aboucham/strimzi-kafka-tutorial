@@ -208,25 +208,23 @@ kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.pass
 
 3- *Create OIDC Secret*: Create an OpenShift secret for the Client Secret in the strimzi namespace.
 
-- Create `realm`: `console-streams`
-- Create a `client Id`: `console-streams-ui`
-- Enable `client authentication` (`Credentials`menu will appear):
-copy client secret in credentials: -`client secret`: `gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje`
+   [source, bash]
+   ----
+   oc create secret generic my-oidc-secret \
+     --from-literal=client-secret=gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje
+   ----
 
+4- *Create Groups & Roles*:
+   - Create two *Groups*: `kafka-admins` and `kafka-devs`.
+   - Create two *Realm Roles*: `administrators` and `developers`.
 
-- Create secret called : `my-oidc-secret`
+5- *Create Users*: Create two *Users*: `admin` and `dev`. Assign them to the respective `groups` and `roles`.
 
-```
-oc create secret generic my-oidc-secret \
-  --from-literal=client-secret=gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje
-```
+=== Deploy Streams Console with OIDC
 
-- Create two `groups`: `kafka-admins` `kafka-devs`  
-- Create `realm roles`:  `administrators` `developers`
-- Create two `users`: `admin` `dev`
+Set OIDC-specific environment variables and deploy the console.
 
-#### Deploy Streams Console OIDC Instance:
-
+[source, bash]
 ----
 oc project strimzi
 
@@ -245,6 +243,8 @@ export DEV_GROUP=kafka-devs
 export ADMIN_ROLE=administrators
 export DEV_ROLE=developers
 ----
+
+*NOTE*: Replace `KeyCloak host` with your actual `KeyCloak route` and the same for `UI_CONSOLE_URL`.
 
 ----
 curl -sL https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/streams-console-oidc.yaml | \
