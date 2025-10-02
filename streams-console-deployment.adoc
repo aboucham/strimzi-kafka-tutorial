@@ -311,10 +311,13 @@ message: 'self-signed certificate'
           name: oidc-ca-certificates
 ----
 
-#### 2 - Error: 'Invalid scopes: openid email profile groups'
+=== Error: 'Invalid scopes: openid email profile groups'
 
+This error indicates that the *Scopes* requested by the Streams Console client are *not defined or enabled* on the KeyCloak client configuration.
 
-[source, yaml,indent=0]
+Log shows:
+
+[source, json,indent=0]
 ----
 \[next-auth\]\[error\]\[OAUTH_CALLBACK_HANDLER_ERROR\]  
 https://next-auth.js.org/errors#oauth_callback_handler_error invalid_scope {  
@@ -339,49 +342,61 @@ message: 'invalid_scope'
 }
 ----
 
-In KeyCloak, Add scope as requested:  
-- Create Client Scope:  "scope": "profile email groups oidc openid"  
-- Assign the above scopes to Client Id `console-streams-ui`
+*Solution*: *Add Requested Scopes in KeyCloak*
 
-#### 3 - Error: "Not Authorized","detail":"Insufficient permissions to resource or action" "status":"403" "code":"4031
+=== 5.2. Error: 'Invalid scopes: openid email profile groups'
 
+This error indicates that the **Scopes** requested by the Streams Console client are **not defined or enabled** on the KeyCloak client configuration.
 
-[source, yaml,indent=0]
+**Log Message:**
+[source, json,indent=0]
 ----
-\[next-auth\]\[error\]\[JWT_SESSION_ERROR\]  
+[next-auth][error][OAUTH_CALLBACK_HANDLER_ERROR]  
+https://next-auth.js.org/errors#oauth_callback_handler_error invalid_scope {  
+// ... stack trace ...
+error_description: 'Invalid scopes: openid email profile groups',  
+// ...
+----
+
+**Solution: Add Requested Scopes in KeyCloak**
+
+1.  Navigate to your **KeyCloak Admin Console**.
+2.  Go to **Client Scopes**.
+3.  Create a new **Client Scope** that includes all the required scopes: `"openid email profile groups"`.
+4.  Navigate to **Clients** and select `console-streams-ui`.
+5.  In the client's settings, assign the newly created scope (or the individual scopes: `openid`, `email`, `profile`, and `groups`) to the client. *Ensure they are listed under **Assigned Client Scopes**.*
+
+=== Error: "Not Authorized" / Missing Groups Claim
+
+This issue is often seen when the user successfully authenticates via OIDC, but the Streams Console cannot authorize them because the required **group membership information is missing** from the JWT Access Token.
+
+**Log Message:**
+* You may see an explicit `403 Not Authorized` in the UI, or a `JWT_SESSION_ERROR` in the logs attempting to refresh a token or fetch user info.
+* The log may show a message like: `TypeError: fetch failed` or indicate a problem retrieving session data, often masking the underlying authorization failure due to missing claims.
+
+[source, json,indent=0]
+----
+[next-auth][error][JWT_SESSION_ERROR]  
 https://next-auth.js.org/errors#jwt_session_error fetch failed {  
 message: 'fetch failed',  
-stack: 'TypeError: fetch failed\\n' +  
-' at node:internal/deps/undici/undici:13510:13\\n' +  
-' at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\\n' +  
-' at async c.getTokenEndpoint (/app/.next/server/chunks/6111.js:1:8235)\\n' +  
-' at async c.refreshToken (/app/.next/server/chunks/6111.js:1:8950)\\n' +  
-' at async Object.i (/app/.next/server/chunks/3123.js:25:6957)\\n' +  
-' at async m (/app/.next/server/chunks/3123.js:1:103909)\\n' +  
-' at async s (/app/.next/server/chunks/3123.js:25:20856)\\n' +  
-' at async z (/app/.next/server/chunks/6111.js:1:15905)\\n' +  
-' at async p (/app/.next/server/chunks/6111.js:1:626)\\n' +  
-' at async z (/app/.next/server/chunks/6111.js:1:885)',  
+// ... stack trace ...
 name: 'TypeError'  
 }
 ----
 
-- Configure a Client Scope Mapper:
-Keycloak doesn't typically include user groups in the JWT by default; you need to configure a Mapper to explicitly add them to the token.
+**Solution: Configure Group Membership Mapper in KeyCloak**
 
-Navigate to Clients and select the client your application is using (e.g., the one that manages tokens for the console-api).
-- Go to the Client Scopes tab.
-- Select the client's dedicated client scope: `groups`
-- In the selected client scope, go to the Mappers tab.
-- Click Add Mapper → By Configuration → Group Membership.
-- Configure the mapper with the following or similar settings:
+KeyCloak does **not** include user groups in the JWT by default; you must configure a **Mapper** to explicitly add them.
 
-Name: groups (or a descriptive name like kafka-groups-mapper)
-Mapper Type: `Group Membership`
-Token Claim Name: `groups` (This is the critical field; it's the claim name that will appear in the JWT).
-Full group path: `OFF` (Unless your application expects the full path, e.g., /kafka-admins. Turning this off usually outputs just the group name, which is often preferred.)
-Add to ID token: `ON` (If your application uses the ID token for authorization)
-Add to access token: `ON` (Most common for API authorization)
-Add to userinfo: `ON` (Optional, but often useful)
-
-Click Save.
+1.  Navigate to the **KeyCloak Admin Console**.
+2.  Go to **Client Scopes**.
+3.  Select the **Client Scope** that your client (`console-streams-ui`) is using.
+4.  Go to the **Mappers** tab.
+5.  Click **Add Mapper** → **By Configuration** → **Group Membership**.
+6.  Configure the mapper:
+    * **Name:** `groups` (or `kafka-groups-mapper`)
+    * **Mapper Type:** `Group Membership`
+    * **Token Claim Name:** `groups` (This is the critical claim name the console looks for).
+    * **Full group path:** **OFF** (This keeps the claim simple, e.g., `["kafka-admins"]`).
+    * **Add to access token:** **ON** (Crucial for authorization).
+7.  Click **Save**.
