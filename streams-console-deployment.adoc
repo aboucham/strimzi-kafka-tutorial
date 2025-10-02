@@ -1,5 +1,11 @@
 = Deploying Your Streams Console: A Step-by-Step Guide
 
+:toc: left
+:toclevels: 3
+:sectnums:
+
+This guide details the step-by-step deployment of the Streams Console for Apache Kafka, including prerequisites, cluster installation, and OpenID Connect (OIDC) integration via KeyCloak, concluding with specific troubleshooting solutions.
+
 Environment Setup:
 
 - Streams for Apache Kafka 3.0.1-2 provided by Red Hat
