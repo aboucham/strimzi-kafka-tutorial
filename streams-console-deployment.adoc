@@ -155,15 +155,15 @@ This section covers setting up *KeyCloak* as an *OpenID Connect (OIDC)* provider
 Create a new project and deploy the KeyCloak Operator.
 
 [source, bash]
------
+----
 oc new-project keycloak
 oc project keycloak
------
+----
 
 Deploy KeyCloak Subscription:
 
 [source, bash]
------
+----
 oc apply -f - <<EOF
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
