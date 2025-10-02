@@ -1,20 +1,20 @@
 apiVersion: console.streamshub.github.com/v1alpha1
 kind: Console
 metadata:
-  name: example
-  namespace: strimzi
+  name: $CONSOLE_CR_NAME
+  namespace: $NAMESPACE
 spec:
-  hostname: example-console.apps.abouchama-ai.emea.aws.cee.support
+  hostname: $UI_CONSOLE_URL
   kafkaClusters:
     - credentials:
         kafkaUser:
-          name: console-kafka-user
-      listener: plain
-      name: kafka-cluster
-      namespace: strimzi
+          name: $KAFKA_CONSOLE_USER
+      listener: $KAFKA_LISTENER_NAME
+      name: $KAFKA_CR_NAME
+      namespace: $NAMESPACE
       security:
         roles:
-          - name: developers
+          - name: $DEV_ROLE
             rules:
               - privileges:
                   - GET
@@ -24,7 +24,7 @@ spec:
                   - topics/records
                   - consumerGroups
                   - rebalances
-          - name: administrators
+          - name: $ADMIN_ROLE
             rules:
               - privileges:
                   - GET
@@ -46,8 +46,8 @@ spec:
                   - rebalances
   security:
     oidc:
-      authServerUrl: 'https://keycloak-host.apps.abouchama-ai.emea.aws.cee.support/realms/console-streams'
-      clientId: console-streams-ui
+      authServerUrl: $OIDC_Discovery_URL
+      clientId: $CLIENT_ID
       clientSecret:
         valueFrom:
           secretKeyRef:
@@ -61,31 +61,31 @@ spec:
               name: oidc-ca-certificates
         type: PEM
     roles:
-      - name: developers
+      - name: $DEV_ROLE
         rules:
           - privileges:
-              - ALL
+              - GET
+              - LIST
             resourceNames:
-              - kafka-cluster
+              - $KAFKA_CR_NAME
             resources:
               - kafkas
-      - name: administrators
+      - name: $ADMIN_ROLE
         rules:
           - privileges:
               - ALL
             resourceNames:
-              - kafka-cluster
               - '*'
             resources:
               - kafkas
     subjects:
       - claim: groups
         include:
-          - kafka-devs
+          - $DEV_GROUP
         roleNames:
-          - developers
+          - $DEV_ROLE
       - claim: groups
         include:
-          - kafka-admins
+          - $ADMIN_GROUP
         roleNames:
-          - administrators
+          - $ADMIN_ROLE
