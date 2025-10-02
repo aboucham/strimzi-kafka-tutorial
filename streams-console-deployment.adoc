@@ -281,21 +281,15 @@ message: 'self-signed certificate'
 **Solution: Inject KeyCloak's CA into the Console Trust Store**
 
 1.  Extract the KeyCloak service certificate (assuming it's stored in a secret named `example-tls-secret` in the `keycloak` namespace).
+2.  Create a secret in the `strimzi` namespace containing the certificate.
+3.  Update your `Console` custom resource (CR) to include a `trustStore` reference to this secret.
 
 [source, bash,indent=0]
 ----
 rm tls.crt
 oc extract secret/example-tls-secret -n keycloak --confirm
-----
-
-2.  Create a secret in the `strimzi` namespace containing the certificate.
-
-[source, bash,indent=0]
-----
 oc create secret generic oidc-ca-certificates --from-file=tls.crt
 ----
-
-3.  Update your `Console` custom resource (CR) to include a `trustStore` reference to this secret.
 
 [source, yaml,indent=0]
 ----
@@ -306,39 +300,6 @@ oc create secret generic oidc-ca-certificates --from-file=tls.crt
           key: tls.crt
           name: oidc-ca-certificates
 ----
-
-=== Error: 'Invalid scopes: openid email profile groups'
-
-This error indicates that the *Scopes* requested by the Streams Console client are *not defined or enabled* on the KeyCloak client configuration.
-
-Log shows:
-
-[source, json,indent=0]
-----
-\[next-auth\]\[error\]\[OAUTH_CALLBACK_HANDLER_ERROR\]  
-https://next-auth.js.org/errors#oauth_callback_handler_error invalid_scope {  
-error: {  
-message: 'invalid_scope',  
-stack: 'Error: invalid_scope\\n' +  
-' at c (/app/.next/server/chunks/3123.js:1:120823)\\n' +  
-' at Object.l (/app/.next/server/chunks/3123.js:25:799)\\n' +  
-' at m (/app/.next/server/chunks/3123.js:1:104470)\\n' +  
-' at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\\n' +  
-' at async o (/app/.next/server/chunks/3123.js:25:19768)\\n' +  
-' at async e.length.t (/app/.next/server/chunks/3123.js:25:21258)\\n' +  
-' at async /app/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38411\\n' +  
-' at async e_.execute (/app/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:27880)\\n' +  
-' at async e_.handle (/app/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:39943)\\n' +  
-' at async doRender (/app/node_modules/next/dist/server/base-server.js:1366:42)',  
-name: 'Error'  
-},  
-error_description: 'Invalid scopes: openid email profile groups',  
-providerId: 'oidc',  
-message: 'invalid_scope'  
-}
-----
-
-*Solution*: *Add Requested Scopes in KeyCloak*
 
 === Error: 'Invalid scopes: openid email profile groups'
 
