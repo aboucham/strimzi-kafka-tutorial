@@ -208,11 +208,11 @@ kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.pass
 
 3- *Create OIDC Secret*: Create an OpenShift secret for the Client Secret in the strimzi namespace.
 
-   [source, bash]
-   ----
+[source, bash]
+----
    oc create secret generic my-oidc-secret \
      --from-literal=client-secret=gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje
-   ----
+----
 
 4- *Create Groups & Roles*:
    - Create two *Groups*: `kafka-admins` and `kafka-devs`.
@@ -286,30 +286,30 @@ message: 'self-signed certificate'
 
 1- Extract the KeyCloak service certificate (assuming it's stored in a secret named `example-tls-secret` in the `keycloak` namespace).
 
-   [source, bash]
-   ----
+[source, bash]
+----
    rm tls.crt
    oc extract secret/example-tls-secret -n keycloak --confirm
-   ----
+----
 
 2- Create a secret in the `strimzi` namespace containing the certificate.
 
-   [source, bash]
-   ----
+[source, bash]
+----
    oc create secret generic oidc-ca-certificates --from-file=tls.crt
-   ----
+----
 
 3- Update your *Console* custom resource (`CR`) to include a `trustStore` reference to this secret.
 
-   [source, yaml,indent=0]
-   ----
+[source, yaml,indent=0]
+----
   trustStore:
     content:
       valueFrom:
         secretKeyRef:
           key: tls.crt
           name: oidc-ca-certificates
-   ----
+----
 
 #### 2 - Error: 'Invalid scopes: openid email profile groups'
 
