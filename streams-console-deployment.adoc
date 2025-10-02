@@ -155,15 +155,17 @@ EOF
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/keycloak/keycloak-install.yaml
 ----
 
-get admin user/pwd
+get admin user/pwd:
+
+----
 kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.username}' | base64 --decode
 kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.password}' | base64 --decode
+----
 
-
-- Create real: console-streams
-- Create a client: console-streams-ui
-- Enable client authentication (Credentials will appear):
-copy client secret in credentials: -client secret: `gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje`
+- Create `realm`: `console-streams`
+- Create a `client Id`: `console-streams-ui`
+- Enable `client authentication` (`Credentials`menu will appear):
+copy client secret in credentials: -`client secret`: `gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje`
 
 
 - Create secret called : `my-oidc-secret`
@@ -173,11 +175,36 @@ oc create secret generic my-oidc-secret \
   --from-literal=client-secret=gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje
 ```
 
-- Create two groups: `kafka-admins` `kafka-devs`  
-- Create realm roles:  `administrators` `developers`
-- Create 2 users: `admin` `dev`
+- Create two `groups`: `kafka-admins` `kafka-devs`  
+- Create `realm roles`:  `administrators` `developers`
+- Create two `users`: `admin` `dev`
 
+#### Deploy Streams Console OIDC Instance:
 
+----
+oc project strimzi
+
+export CONSOLE_CR_NAME="example"
+export KAFKA_CR_NAME="kafka-cluster"
+export UI_CONSOLE_URL="example-console.apps.abouchama-ai.emea.aws.cee.support"
+export NAMESPACE="strimzi"
+export KAFKA_LISTENER_NAME="plain"
+# Name of the `KafkaUser` resource used to connect to Kafka
+# This is optional if properties are used to configure the user
+export KAFKA_CONSOLE_USER="console-kafka-user"
+export OIDC_Discovery_URL=https://keycloak-host.apps.abouchama-ai.emea.aws.cee.support/realms/console-streams  
+export CLIENT_ID=console-streams-ui
+export ADMIN_GROUP=kafka-admins
+export DEV_GROUP=kafka-devs
+export ADMIN_ROLE=administrators
+export DEV_ROLE=developers
+----
+
+----
+curl -sL https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/streams-console-oidc.yaml | \
+envsubst | \
+oc apply -f -
+----
 
 ## TroubleShooting
 
