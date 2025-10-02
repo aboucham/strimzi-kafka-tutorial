@@ -52,12 +52,14 @@ EOF
 
 *NOTE:* Wait for both subscriptions to reach Succeeded state before proceeding.
 
-== Install Kafka Cluster 
+2. Install Kafka Cluster
 
-First, we will deploy a Kafka cluster `kafka-cluster` Kraft Based:
+We will deploy a Kafka cluster named `kafka-cluster` using the `Kraft` (Kafka Raft) mode. Ensure you are in the target namespace (e.g., `strimzi`).
 
-[source, yaml,indent=0]
+[source, bash]
 ----
+oc new-project strimzi
+oc project strimzi
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/full-Kafka-cluster-kraft.yaml
 ----
 
