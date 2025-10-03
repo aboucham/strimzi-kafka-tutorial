@@ -57,8 +57,16 @@ data:
 # -----------------------------------------------------------------------------
 # 2. TLS Secret for Keycloak Route (example-tls-secret)
 #    Holds the certificate and private key for the Keycloak HTTPS/TLS connection.
-#    !!! IMPORTANT: Replace the mock values below with your actual base64
-#    encoded certificate (tls.crt) and private key (tls.key) !!!
+#
+#    !!! IMPORTANT: To fix the BadRequest error, the base64 content must be
+#    a single, continuous string without any comments, newlines, or extra
+#    whitespace. The mock data below is now fixed to be in the correct format.
+#    Replace these placeholder strings with your actual base64-encoded
+#    certificate (tls.crt) and private key (tls.key) contents.
+#
+#    How to generate the required Base64 strings:
+#    $ base64 -w0 certificate.pem
+#    $ base64 -w0 key.pem
 # -----------------------------------------------------------------------------
 apiVersion: v1
 kind: Secret
@@ -66,14 +74,10 @@ metadata:
   name: example-tls-secret
 type: kubernetes.io/tls
 data:
-  tls.crt: |
-    # MOCK_CERTIFICATE_START: Replace this with actual base64-encoded cert
-    LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiNNb2NrIENlcnRpZmljYXRlIEJhc2U2NCBFbmNvZGVkCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0=
-    # MOCK_CERTIFICATE_END
-  tls.key: |
-    # MOCK_KEY_START: Replace this with actual base64-encoded private key
-    LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCiNNb2NrIFByaXZhdGUgS2V5IEJhc2U2NCBFbmNvZGVkCi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0=
-    # MOCK_KEY_END
+  # Placeholder for base64 encoded certificate (tls.crt)
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiNNb2NrIENlcnRpZmljYXRlIEJhc2U2NCBFbmNvZGVkCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0=
+  # Placeholder for base64 encoded private key (tls.key)
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCiNNb2NrIFByaXZhdGUgS2V5IEJhc2U2NCBFbmNvZGVkCi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0=
 ---
 apiVersion: k8s.keycloak.org/v2alpha1
 kind: Keycloak
