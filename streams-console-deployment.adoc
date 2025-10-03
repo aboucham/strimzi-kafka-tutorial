@@ -215,7 +215,7 @@ kubectl get secret -n keycloak example-kc-initial-admin -o jsonpath='{.data.pass
 
 [source, bash]
 ----
-oc create secret generic my-oidc-secret \
+oc create secret generic my-oidc-secret -n strimzi \
   --from-literal=client-secret=gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje
 ----
 
