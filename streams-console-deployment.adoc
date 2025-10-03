@@ -287,7 +287,7 @@ message: 'self-signed certificate'
 ----
 rm tls.crt
 oc extract secret/example-tls-secret -n keycloak --confirm
-oc create secret generic oidc-ca-certificates --from-file=tls.crt
+oc create secret generic oidc-ca-certificates -n strimzi --from-file=tls.crt
 ----
 
 [source, yaml,indent=0]
