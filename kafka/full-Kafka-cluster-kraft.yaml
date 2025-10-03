@@ -64,10 +64,14 @@ spec:
       transaction.state.log.replication.factor: 3
     listeners:
       - name: plain
+        authentication:
+          type: scram-sha-512
         port: 9092
         tls: false
         type: internal
       - name: tls
+        authentication:
+          type: scram-sha-512
         port: 9095
         tls: true
         type: internal
@@ -77,7 +81,7 @@ spec:
         port: 9093
         tls: true
         type: internal
-      - name: listener1
+      - name: external
         port: 9094
         tls: true
         type: route
