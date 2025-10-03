@@ -1,0 +1,178 @@
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: KeycloakRealmImport
+metadata:
+  name: console-streams1
+  namespace: keycloak
+spec:
+  keycloakCRName: example-kc
+  realm: {
+  "realm": "console-streams",
+  "enabled": true,
+  "clientScopes": [
+    {
+      "name": "console-streams-scopes",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "true",
+        "include.in.token.scope": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "claim.name": "groups"
+          }
+        },
+        {
+          "name": "profile",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "lastName",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "family_name"
+          }
+        },
+        {
+          "name": "profile",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "firstName",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "given_name"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "email",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "openid",
+    "email",
+    "profile",
+    "web-origins"
+  ],
+  "defaultOptionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ],
+  "groups": [
+    {
+      "name": "kafka-admins",
+      "realmRoles": [
+        "administrators"
+      ]
+    },
+    {
+      "name": "kafka-devs",
+      "realmRoles": [
+        "developers"
+      ]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "administrators",
+        "composite": false
+      },
+      {
+        "name": "developers",
+        "composite": false
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Kafka",
+      "lastName": "Admin",
+      "groups": [
+        "kafka-admins"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password"
+        }
+      ]
+    },
+    {
+      "username": "dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Kafka",
+      "lastName": "Dev",
+      "groups": [
+        "kafka-devs"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password"
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "console-streams-ui",
+      "name": "Console Streams UI",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "gcGZadb9sZGTGmXazW1HHkJEcMQ8eUje",
+      "redirectUris": [
+        "*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "frontchannelLogout": true,
+      "fullScopeAllowed": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "post.logout.redirect.uris": "*"
+      },
+      "defaultClientScopes": [
+        "console-streams-scopes"
+      ]
+    }
+  ]
+}
