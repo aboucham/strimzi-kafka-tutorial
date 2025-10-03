@@ -292,12 +292,13 @@ oc create secret generic oidc-ca-certificates -n strimzi --from-file=tls.crt
 
 [source, yaml,indent=0]
 ----
-  trustStore:
-    content:
-      valueFrom:
-        secretKeyRef:
-          key: tls.crt
-          name: oidc-ca-certificates
+      trustStore:
+        content:
+          valueFrom:
+            secretKeyRef:
+              key: tls.crt
+              name: oidc-ca-certificates
+        type: PEM
 ----
 
 === Error: 'Invalid scopes: openid email profile groups'
