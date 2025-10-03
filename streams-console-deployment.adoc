@@ -281,7 +281,7 @@ message: 'self-signed certificate'
 
 1.  Extract the KeyCloak service certificate (assuming it's stored in a secret named `example-tls-secret` in the `keycloak` namespace).
 2.  Create a secret in the `strimzi` namespace containing the certificate.
-3.  Update your `Console` custom resource (CR) to include a `trustStore` reference to this secret.
+3.  Update your `Console` custom resource (CR) to include a `trustStore` reference to this secret under `spec.security`.
 
 [source, bash,indent=0]
 ----
