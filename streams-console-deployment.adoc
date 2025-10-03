@@ -186,7 +186,10 @@ Deploy Keycloak 26 Instance:
 
 [source, bash]
 ----
-oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/keycloak/keycloak-install.yaml
+export KEYCLOAK_HOST_URL=https://keycloak-host.apps.abouchama-ai.emea.aws.cee.support
+curl -sL https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/keycloak/keycloak-install.yaml | \
+envsubst | \
+oc apply -f -
 ----
 
 Retrieve the initial `admin` credentials:
