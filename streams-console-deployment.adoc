@@ -186,7 +186,7 @@ Deploy Keycloak 26 Instance:
 
 [source, bash]
 ----
-export KEYCLOAK_HOST_URL=https://keycloak-host.apps.abouchama-ai.emea.aws.cee.support
+export KEYCLOAK_HOST_URL=keycloak-host.apps.abouchama-ai.emea.aws.cee.support
 curl -sL https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/keycloak/keycloak-install.yaml | \
 envsubst | \
 oc apply -f -
