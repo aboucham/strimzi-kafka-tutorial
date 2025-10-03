@@ -80,7 +80,7 @@ spec:
       name: keycloak-db-secret
     vendor: postgres
   hostname:
-    hostname: keycloak-host.apps.aboucham-ai.emea.aws.cee.support
+    hostname: $KEYCLOAK_HOST_URL
   http:
     tlsSecret: example-tls-secret
   instances: 1
