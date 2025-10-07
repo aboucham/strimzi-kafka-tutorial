@@ -101,9 +101,9 @@ spec:
 EOF
 ----
 
-=== Console with `plain` Listener (`Anonymous/Prompt Auth`)
+=== Console with `plain` Listener (`Prompt Auth`)
 
-This configuration omits the credentials section, which may prompt for credentials in the UI or rely on anonymous access (depending on Kafka cluster setup).
+This configuration omits the credentials section, which may prompt for credentials in the UI.
 
 [source, bash]
 ----
@@ -121,7 +121,7 @@ spec:
 EOF
 ----
 
-=== Console with `tls` Listener (`Anonymous/Prompt Auth`)
+=== Console with `tls` Listener (`Prompt Auth`)
 
 This configuration uses a `tls` listener. Ensure the Kafka cluster is configured for TLS.
 
