@@ -18,24 +18,7 @@ First, we will deploy a Kafka cluster `my-cluster` Zookeper Based:
 
 [source, yaml,indent=0]
 ----
-oc apply -f https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/refs/heads/main/examples/metrics/kafka-metrics.yaml
-----
-
-Deploy Streams Console
-
-----
-oc create -f - <<EOF
-apiVersion: console.streamshub.github.com/v1alpha1
-kind: Console
-metadata:
-  name: my-console
-spec:
-  hostname: my-cluster.apps.abouchama-fuse30.emea.aws.cee.support
-  kafkaClusters:
-    - name: my-cluster
-      namespace: strimzi
-      listener: plain
-EOF
+oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-dev-cluster.yaml
 ----
 
 === Starting the migration to Kafka Node Pool:
@@ -47,7 +30,7 @@ kind: KafkaNodePool
 metadata:
   name: kafka
   labels:
-    strimzi.io/cluster: my-cluster
+    strimzi.io/cluster: dev-cluster
 spec:
   replicas: 3
   roles:
@@ -63,8 +46,8 @@ EOF
 ----
 
 ----
-oc annotate k my-cluster strimzi.io/node-pools="enabled" --overwrite
-oc annotate k my-cluster strimzi.io/kraft="disabled" --overwrite
+oc annotate k dev-cluster strimzi.io/node-pools="enabled" --overwrite
+oc annotate k dev-cluster strimzi.io/kraft="disabled" --overwrite
 ----
 
 WARNING:To preserve cluster data and the names of its nodes and resources, the node pool name must be kafka, and the strimzi.io/cluster label matches the Kafka resource name. Otherwise, nodes and resources are created with new names, including the persistent volume storage used by the nodes. Consequently, your previous data may not be available.
@@ -87,7 +70,7 @@ kind: KafkaNodePool
 metadata:
   name: controller
   labels:
-    strimzi.io/cluster: my-cluster
+    strimzi.io/cluster: dev-cluster
 spec:
   replicas: 3
   roles:
@@ -106,14 +89,14 @@ EOF
 
 [source, yaml,indent=0]
 ----
-oc annotate k my-cluster strimzi.io/kraft="migration" --overwrite
+oc annotate k dev-cluster strimzi.io/kraft="migration" --overwrite
 ----
 
 Status:
 
 [source, yaml,indent=0]
 ----
-oc get k my-cluster -o yaml | yq .status.conditions
+oc get k dev-cluster -o yaml | yq .status.conditions
 ----
 
 [source, yaml,indent=0]
@@ -181,7 +164,7 @@ While the migration is going on, you can see the cluster changing the metadata s
 
 [source, yaml,indent=0]
 ----
-oc get kafka my-cluster -w
+oc get kafka dev-cluster -w
 NAME         DESIRED KAFKA REPLICAS   DESIRED ZK REPLICAS   READY   METADATA STATE   WARNINGS
 my-cluster   3                        3                             ZooKeeper
 my-cluster   3                        3                     True    KRaftMigration
