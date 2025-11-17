@@ -213,4 +213,7 @@ rm -rf ~/Downloads/kafka_2.13-3.9.1.redhat-00006-2/zookeeper/*
 # 3. Remove KRaft Metadata Logs
 rm -rf /tmp/kafka-metadata-100 /tmp/kafka-metadata-101 /tmp/kafka-metadata-102
 rm -rf /tmp/kafka-logs/* # If using /tmp/kafka-logs for non-KRaft data
+
+# 4. remove logs
+rm -rf ./logs
 ----
