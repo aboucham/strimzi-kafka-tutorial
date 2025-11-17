@@ -1,0 +1,205 @@
+= Streams for Apache Kafka 2.9: ZooKeeper to KRaft Migration Guide
+:toc:
+:toc-title: Table of Contents
+:icons: font
+:source-highlighter: highlight.js
+
+== ℹ️ Prerequisites and Cluster Information
+
+This guide covers the migration of a minimal Kafka 3.9 cluster (Streams for Apache Kafka 2.9) running with ZooKeeper to a KRaft-based quorum in a single-host testing environment. All steps assume execution from the Kafka installation directory (e.g., `~/Downloads/kafka_2.13-3.9.1.redhat-00006-2`).
+
+.Cluster Details
+|===
+| Element | Value / Role
+| **Real Cluster ID** (Obtained from ZK) | `lyPNgSgVSTq3i4H3JK8O7A`
+| **ZK Broker ID** | `broker.id=0`
+| **KRaft Controllers (Simulated Quorum)** | `node.id=100`, `101`, `102`
+| **KRaft Controller Ports** | `9090`, `9091`, `9094`
+| **Broker Client Port** | `9092`
+|===
+
+// ----------------------------------------------------------------------------------------------------------------------
+---
+
+== Chapter 1: Starting the ZooKeeper/Kafka Server
+
+This sequence ensures Kafka starts correctly, verifying ZK dependencies are met before starting the Kafka Broker.
+
+=== 1.1. Start ZooKeeper
+
+The ZooKeeper server must be running to provide metadata services before Kafka can launch.
+
+[source, bash]
+----
+./bin/zookeeper-server-start.sh -daemon ./config/zookeeper.properties
+----
+
+**Verification (Expected Output):**
+[source, bash]
+----
+jcmd | grep zookeeper
+37288 org.apache.zookeeper.server.quorum.QuorumPeerMain ./config/zookeeper.properties
+----
+
+=== 1.2. Start the Kafka Broker
+
+Start the Kafka Broker, which registers itself with the running ZooKeeper instance.
+
+[source, bash]
+----
+./bin/kafka-server-start.sh -daemon ./config/server.properties
+----
+
+**Verification (Expected Output):**
+[source, bash]
+----
+jcmd | grep kafka
+38247 kafka.Kafka ./config/server.properties
+----
+
+=== 1.3. Test Messaging Functionality
+
+Verify that the broker is fully operational by sending and consuming messages.
+
+[source, bash]
+----
+# Start Producer in one terminal
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic my-test-topic
+
+# Start Consumer in a second terminal
+./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic my-test-topic --from-beginning
+----
+
+// ----------------------------------------------------------------------------------------------------------------------
+---
+
+== Chapter 2: ZooKeeper to KRaft Migration (Dual-Write Phase)
+
+This phase enables the *Dual-Write* mode, where ZooKeeper and the new KRaft quorum manage metadata simultaneously, preparing for the final transition.
+
+=== 2.1. Configure KRaft Controllers (Dedicated Role)
+
+The controllers must be configured with the dedicated role (`process.roles=controller`) and unique ports to avoid conflicts with the existing Broker on port 9092.
+
+.Configuration for `controller-100.properties` (Adapt for 101/9091 and 102/9094)
+[source, properties]
+----
+process.roles=controller
+node.id=100
+log.dirs=/var/lib/kafka-metadata-100 # Must be unique for each controller
+
+# Listener is for KRaft Quorum communication only (no client API)
+listeners=CONTROLLER://0.0.0.0:9090
+controller.listener.names=CONTROLLER
+listener.security.protocol.map=CONTROLLER:PLAINTEXT 
+
+# List of all controllers in the quorum
+controller.quorum.bootstrap.servers=localhost:9090,localhost:9091,localhost:9094
+
+# Enable Migration and ZK Connection
+zookeeper.metadata.migration.enable=true
+zookeeper.connect=localhost:2181 
+----
+
+=== 2.2. Format and Start KRaft Controllers
+
+1.  **Format Log Directories (Using the Actual Cluster ID):**
+    [source, bash]
+    ----
+    ./bin/kafka-storage.sh format --cluster-id lyPNgSgVSTq3i4H3JK8O7A --standalone --config ./config/kraft/controller-100.properties
+    # Repeat for controller-101.properties and controller-102.properties
+    ----
+    **Verification (Output) :** `Formatting dynamic metadata voter directory ... with metadata.version 3.9-IV0.`
+
+2.  **Start the KRaft Controllers:**
+    (Ensure ZooKeeper is still running before this step.)
+    [source, bash]
+    ----
+    ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-100.properties
+    ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-101.properties
+    ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-102.properties
+    ----
+    **Verification (jcmd):** Confirms all three controller processes are running.
+
+=== 2.3. Enable Dual-Write on the Existing Broker
+
+Update the existing Broker configuration to start writing metadata to the new KRaft quorum.
+
+1.  **Update `server.properties`:** Add/modify the following properties in your main broker config:
+    [source, properties]
+    ----
+    # Add CONTROLLER listener for communication with KRaft quorum (using a free port, e.g., 9093)
+    listeners=PLAINTEXT://:9092,CONTROLLER://:9093
+    listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+    # Activate Dual-Write Mode
+    zookeeper.metadata.migration.enable=true
+    inter.broker.protocol.version=3.9 
+
+    # Configure the KRaft quorum connection for the broker
+    controller.listener.names=CONTROLLER
+    controller.quorum.bootstrap.servers=localhost:9090,localhost:9091,localhost:9094
+    ----
+
+2.  **Rolling Restart of the Broker (Activates Dual-Write):**
+    [source, bash]
+    ----
+    ./bin/kafka-server-stop.sh
+    ./bin/kafka-server-start.sh -daemon ./config/server.properties
+    ----
+
+=== 2.4. Final Migration Validation (Dual-Write Complete)
+
+Monitor the active KRaft controller's log (e.g., controller 100) for the final confirmation message.
+
+[source, bash]
+----
+tail -f ./logs/controller.log
+# Look for:
+[INFO] [QuorumController id=100] Completing migration of ZooKeeper metadata to KRaft. (org.apache.kafka.controller.QuorumController)
+----
+Once this log entry appears, the cluster is operating stably in the Dual-Write mode.
+
+// ----------------------------------------------------------------------------------------------------------------------
+---
+
+== Chapter 3: Stopping and Cleaning Up Services
+
+### 3.1. Stop Services
+
+It is crucial to stop the services in the correct dependency order.
+
+1.  **Stop the Kafka Broker (Dual-Write):**
+    [source, bash]
+    ----
+    ./bin/kafka-server-stop.sh
+    ----
+2.  **Stop the KRaft Controllers:**
+    (Use the PIDs listed by `jcmd | grep controller`)
+    [source, bash]
+    ----
+    # Example: kill <PID_100> <PID_101> <PID_102>
+    kill 42577 43721 43151
+    ----
+3.  **Stop ZooKeeper:**
+    [source, bash]
+    ----
+    ./bin/zookeeper-server-stop.sh
+    ----
+
+### 3.2. Clean Data Directories
+
+To completely reset the environment, delete the data directories (use caution with `rm -rf`).
+
+[source, bash]
+----
+# 1. Remove Kafka Data (Topics)
+rm -rf /var/lib/kafka/*
+
+# 2. Remove ZooKeeper Data (Logs/Snapshots)
+rm -rf /var/lib/zookeeper/*
+
+# 3. Remove KRaft Metadata Logs
+rm -rf /var/lib/kafka-metadata-100 /var/lib/kafka-metadata-101 /var/lib/kafka-metadata-102
+rm -rf /tmp/kafka-logs/* # If using /tmp/kafka-logs for non-KRaft data
+----
