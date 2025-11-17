@@ -107,19 +107,20 @@ zookeeper.connect=localhost:2181
 
 [source, bash]
 ----
-    ./bin/kafka-storage.sh format --cluster-id lyPNgSgVSTq3i4H3JK8O7A --standalone --config ./config/kraft/controller-100.properties
-    # Repeat for controller-101.properties and controller-102.properties
+./bin/kafka-storage.sh format --cluster-id lyPNgSgVSTq3i4H3JK8O7A --standalone --config ./config/kraft/controller-100.properties
+# Repeat for controller-101.properties and controller-102.properties
 ----
-    **Verification (Output) :** `Formatting dynamic metadata voter directory ... with metadata.version 3.9-IV0.`
+
+**Verification (Output) :** `Formatting dynamic metadata voter directory ... with metadata.version 3.9-IV0.`
 
 2.  **Start the KRaft Controllers:**
     (Ensure ZooKeeper is still running before this step.)
 
 [source, bash]
 ----
-    ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-100.properties
-    ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-101.properties
-    ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-102.properties
+./bin/kafka-server-start.sh -daemon ./config/kraft/controller-100.properties
+./bin/kafka-server-start.sh -daemon ./config/kraft/controller-101.properties
+./bin/kafka-server-start.sh -daemon ./config/kraft/controller-102.properties
 ----
 
     **Verification (jcmd):** Confirms all three controller processes are running.
@@ -132,25 +133,25 @@ Update the existing Broker configuration to start writing metadata to the new KR
 
 [source, properties]
 ----
-    # Add CONTROLLER listener for communication with KRaft quorum (using a free port, e.g., 9093)
-    listeners=PLAINTEXT://:9092,CONTROLLER://:9093
-    listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+# Add CONTROLLER listener for communication with KRaft quorum (using a free port, e.g., 9093)
+listeners=PLAINTEXT://:9092,CONTROLLER://:9093
+listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
 
-    # Activate Dual-Write Mode
-    zookeeper.metadata.migration.enable=true
-    inter.broker.protocol.version=3.9 
+# Activate Dual-Write Mode
+zookeeper.metadata.migration.enable=true
+inter.broker.protocol.version=3.9
 
-    # Configure the KRaft quorum connection for the broker
-    controller.listener.names=CONTROLLER
-    controller.quorum.bootstrap.servers=localhost:9090,localhost:9091,localhost:9094
+# Configure the KRaft quorum connection for the broker
+controller.listener.names=CONTROLLER
+controller.quorum.bootstrap.servers=localhost:9090,localhost:9091,localhost:9094
 ----
 
 2.  **Rolling Restart of the Broker (Activates Dual-Write):**
 
 [source, bash]
 ----
-    ./bin/kafka-server-stop.sh
-    ./bin/kafka-server-start.sh -daemon ./config/server.properties
+./bin/kafka-server-stop.sh
+./bin/kafka-server-start.sh -daemon ./config/server.properties
 ----
 
 === 2.4. Final Migration Validation (Dual-Write Complete)
@@ -178,7 +179,7 @@ It is crucial to stop the services in the correct dependency order.
 
 [source, bash]
 ----
-    ./bin/kafka-server-stop.sh
+./bin/kafka-server-stop.sh
 ----
 
 2.  **Stop the KRaft Controllers:**
@@ -186,14 +187,15 @@ It is crucial to stop the services in the correct dependency order.
 
 [source, bash]
 ----
-    # Example: kill <PID_100> <PID_101> <PID_102>
-    kill 42577 43721 43151
+# Example: kill <PID_100> <PID_101> <PID_102>
+kill 42577 43721 43151
 ----
+
 3.  **Stop ZooKeeper:**
 
 [source, bash]
 ----
-    ./bin/zookeeper-server-stop.sh
+./bin/zookeeper-server-stop.sh
 ----
 
 ### 3.2. Clean Data Directories
