@@ -206,9 +206,8 @@ Monitor the active KRaft controller's log (e.g., controller 100) for the final c
 
 [source, bash]
 ----
-tail -f ./logs/controller.log
-# Look for:
-[INFO] [QuorumController id=100] Completing migration of ZooKeeper metadata to KRaft. (org.apache.kafka.controller.QuorumController)
+grep "Completing migration of ZooKeeper metadata to KRaft" ./logs/controller.log
+[2025-11-18 10:59:07,198] INFO [QuorumController id=100] Completing migration of ZooKeeper metadata to KRaft. (org.apache.kafka.controller.QuorumController)
 ----
 Once this log entry appears, the cluster is operating stably in the Dual-Write mode.
 
