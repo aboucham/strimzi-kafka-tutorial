@@ -168,7 +168,12 @@ jcmd | grep kafka
 
 === 4 - Enable Dual-Write on the Existing Broker
 
-Update the existing Broker configuration to start writing metadata to the new KRaft quorum.
+Enable Migration on Brokers and Rolling Restart (Phase 2) On each existing Kafka broker (one by one), enable migration by updating its configuration (`./config/server.properties`):
+
+- Add zookeeper.metadata.migration.enable=true.
+- Add the controller connection details (e.g., listeners, controller.listener.names, controller.quorum.bootstrap.servers).
+- Set inter.broker.protocol.version to a supported version (e.g., 3.9).
+- Perform a graceful restart of the broker.
 
 1.  **Update `server.properties`:** Add/modify the following properties in your main broker config:
 
