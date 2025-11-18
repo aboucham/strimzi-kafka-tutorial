@@ -138,7 +138,8 @@ Format Log Directories for Controllers For each controller node, format the stor
 [source, bash]
 ----
 ./bin/kafka-storage.sh format --cluster-id SY9T31EKSS6XeNO_Jio6yQ --standalone --config ./config/kraft/controller-100.properties
-# Repeat for controller-101.properties and controller-102.properties
+./bin/kafka-storage.sh format --cluster-id SY9T31EKSS6XeNO_Jio6yQ --standalone --config ./config/kraft/controller-101.properties
+./bin/kafka-storage.sh format --cluster-id SY9T31EKSS6XeNO_Jio6yQ --standalone --config ./config/kraft/controller-102.properties
 ----
 
 **Verification (Output) :** `Formatting dynamic metadata voter directory ... with metadata.version 3.9-IV0.`
