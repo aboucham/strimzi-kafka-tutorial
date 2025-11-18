@@ -258,6 +258,20 @@ Kraft:
 
 - Perform a graceful restart.
 
+**verification:**
+
+[source, bash]
+----
+ grep "Starting request manager" ./logs/server.log
+[2025-11-18 16:19:30,222] INFO [RaftManager id=0] Starting request manager with bootstrap servers: [localhost:9090 (id: -2 rack: null), localhost:9091 (id: -3 rack: null), localhost:9094 (id: -4 rack: null)] (org.apache.kafka.raft.KafkaRaftClient)
+----
+
+[source, bash]
+----
+grep "Kafka Server started" ./logs/server.log
+[2025-11-18 16:19:31,146] INFO [KafkaRaftServer nodeId=0] Kafka Server started (kafka.server.KafkaRaftServer)
+----
+
 3. **Switch Controllers out of Migration Mode** On each controller node (one by one), update the configuration and perform a restart:
 
 - Remove `zookeeper.connect`.
