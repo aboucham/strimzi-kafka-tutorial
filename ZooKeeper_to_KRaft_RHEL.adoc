@@ -11,7 +11,7 @@ This guide covers the migration of a minimal Kafka 3.9 cluster (Streams for Apac
 .Cluster Details
 |===
 | Element | Value / Role
-| **Real Cluster ID** (Obtained from ZK) | `lyPNgSgVSTq3i4H3JK8O7A`
+| **Real Cluster ID** (Obtained from ZK) | `SY9T31EKSS6XeNO_Jio6yQ`
 | **ZK Broker ID** | `broker.id=0`
 | **KRaft Controllers (Simulated Quorum)** | `node.id=100`, `101`, `102`
 | **KRaft Controller Ports** | `9090`, `9091`, `9094`
