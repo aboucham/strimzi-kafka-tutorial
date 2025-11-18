@@ -74,7 +74,37 @@ echo "Test message using console-producer and console-consumer" | ./bin/kafka-co
 
 This phase enables the *Dual-Write* mode, where ZooKeeper and the new KRaft quorum manage metadata simultaneously, preparing for the final transition.
 
-=== 2.1. Configure KRaft Controllers (Dedicated Role)
+The migration from ZooKeeper to KRaft (Kafka Raft metadata) mode is a multi-step process that allows a cluster to transition without downtime. Kafka version 3.9 is the final version to support ZooKeeper.
+
+==== Prerequisites for Migration
+- Your Kafka cluster must be running Streams for Apache Kafka 2.7 or newer with Kafka 3.7.0 or newer.
+- You are logged in to RHEL as the kafka user.
+- The original cluster uses dedicated controller nodes (migration is not supported for nodes in combined broker/controller mode during migration).
+- You have the Cluster ID retrieved from the installation step.
+- Logging should be enabled for troubleshooting (e.g., set log4j.rootLogger=DEBUG and log4j.logger.org.apache.kafka.metadata.migration=TRACE).
+
+=== 1 - Retrieve Cluster ID
+
+Get the cluster ID using the `zookeeper-shell` tool:
+
+[source, bash]
+----
+./bin/zookeeper-shell.sh localhost:2181 get /cluster/id
+----
+
+**Verification (Output) :**
+
+[source, bash]
+----
+Connecting to localhost:2181
+
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+{"version":"1","id":"SY9T31EKSS6XeNO_Jio6yQ"}
+----
+
+=== 2 - Configure KRaft Controllers (Dedicated Role)
 
 The controllers must be configured with the dedicated role (`process.roles=controller`) and unique ports to avoid conflicts with the existing Broker on port 9092.
 
@@ -83,7 +113,8 @@ The controllers must be configured with the dedicated role (`process.roles=contr
 ----
 process.roles=controller
 node.id=100
-log.dirs=/var/lib/kafka-metadata-100 # Must be unique for each controller
+# Must be unique for each controller
+log.dirs=/tmp/kafka-metadata-100 
 
 # Listener is for KRaft Quorum communication only (no client API)
 listeners=CONTROLLER://0.0.0.0:9090
@@ -98,13 +129,13 @@ zookeeper.metadata.migration.enable=true
 zookeeper.connect=localhost:2181 
 ----
 
-=== 2.2. Format and Start KRaft Controllers
+=== 3 - Format and Start KRaft Controllers
 
 1.  **Format Log Directories (Using the Actual Cluster ID):**
 
 [source, bash]
 ----
-./bin/kafka-storage.sh format --cluster-id lyPNgSgVSTq3i4H3JK8O7A --standalone --config ./config/kraft/controller-100.properties
+./bin/kafka-storage.sh format --cluster-id SY9T31EKSS6XeNO_Jio6yQ --standalone --config ./config/kraft/controller-100.properties
 # Repeat for controller-101.properties and controller-102.properties
 ----
 
