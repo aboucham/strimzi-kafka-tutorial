@@ -223,12 +223,55 @@ WatchedEvent state:SyncConnected type:None path:null
 {"version":0,"kraft_metadata_offset":1296,"kraft_controller_id":100,"kraft_metadata_epoch":3,"kraft_controller_epoch":3}
 ----
 
+You can check also for the following log entries in the Kafka broker's `server.log` that confirm successful registration to both ZooKeeper and the KRaft quorum after enabling the migration configuration (Dual-Write mode):
+
+Zookeeper:
+
+[source, bash]
+----
+----
+
+Kraft:
+
+[source, bash]
+----
+----
+
+
 // ----------------------------------------------------------------------------------------------------------------------
 ---
 
-== Chapter 3: Stopping and Cleaning Up Services
+== Chapter 3: Finalize Migration
 
-### 3.1. Stop Services
+1. **Wait for Migration Completion** Monitor the logs on the active controller for an `INFO` log indicating: `Completed migration of metadata from ZooKeeper to KRaft`.
+
+2. **Switch Brokers to KRaft Mode and Rolling Restart** On each broker (one by one), update the configuration and perform a graceful restart:
+
+- Replace `broker.id` with `node.id` (**using the same ID**).
+- Add `process.roles=broker`.
+- Remove `inter.broker.protocol.version`.
+- Remove `zookeeper.metadata.migration.enable`.
+- Remove `zookeeper.connect`.
+- Remove `control.plane.listener.name` (if present).
+- If using ACLs, update the authorizer class name: `authorizer.class.name=org.apache.kafka.metadata.authorizer.StandardAuthorizer`
+(from `kafka.security.authorizer.AclAuthorizer` for ZooKeeper-based brokers) .
+
+- Perform a graceful restart.
+
+3. **Switch Controllers out of Migration Mode** On each controller node (one by one), update the configuration and perform a restart:
+
+- Remove `zookeeper.connect`.
+- Remove `zookeeper.metadata.migration.enable`.
+- Remove `inter.broker.listener.name`.
+- Restart the controller.
+
+Once completed, your Kafka cluster is fully operating in KRaft mode. You can now decommission the ZooKeeper nodes.
+
+**Warning:** Once the migration is finalized (step 3 in Phase 3), **rollback to ZooKeeper is no longer possible**.
+
+== Chapter 4: Stopping and Cleaning Up Services
+
+### 4.1. Stop Services
 
 1.  **Stop the Kafka Broker (Dual-Write):**
 
@@ -253,7 +296,7 @@ kill 42577 43721 43151
 ./bin/zookeeper-server-stop.sh
 ----
 
-### 3.2. Clean Data Directories
+### 4.2. Clean Data Directories
 
 To completely reset the environment, delete the data directories (use caution with `rm -rf`).
 
