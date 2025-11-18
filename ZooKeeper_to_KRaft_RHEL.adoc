@@ -63,11 +63,8 @@ Verify that the broker is fully operational by sending and consuming messages.
 
 [source, bash]
 ----
-# Start Producer in one terminal
-./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic my-test-topic
-
-# Start Consumer in a second terminal
-./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic my-test-topic --from-beginning
+echo "Test message using console-producer and console-consumer" | ./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic my-test-topic
+./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic my-test-topic --from-beginning --max-messages 1
 ----
 
 // ----------------------------------------------------------------------------------------------------------------------
