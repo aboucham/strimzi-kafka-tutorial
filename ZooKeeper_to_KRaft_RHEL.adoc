@@ -81,7 +81,7 @@ The migration from ZooKeeper to KRaft (Kafka Raft metadata) mode is a multi-step
 - You are logged in to RHEL as the kafka user.
 - The original cluster uses dedicated controller nodes (migration is not supported for nodes in combined broker/controller mode during migration).
 - You have the Cluster ID retrieved from the installation step.
-- Logging should be enabled for troubleshooting (e.g., set log4j.rootLogger=DEBUG and log4j.logger.org.apache.kafka.metadata.migration=TRACE).
+- Logging should be enabled for troubleshooting (e.g., set `log4j.rootLogger=DEBUG` and `log4j.logger.org.apache.kafka.metadata.migration=TRACE`).
 
 === 1 - Retrieve Cluster ID
 
@@ -130,6 +130,8 @@ zookeeper.connect=localhost:2181
 ----
 
 === 3 - Format and Start KRaft Controllers
+
+Format Log Directories for Controllers For each controller node, format the storage using the `retrieved cluster ID`:
 
 1.  **Format Log Directories (Using the Actual Cluster ID):**
 
