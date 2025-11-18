@@ -211,14 +211,24 @@ grep "Completing migration of ZooKeeper metadata to KRaft" ./logs/controller.log
 ----
 Once this log entry appears, the cluster is operating stably in the Dual-Write mode.
 
+You can check also Zookeeper registry to get the information about the Kraft Leader / 
+[source, bash]
+----
+/bin/zookeeper-shell.sh localhost:2181 get /migration
+
+Connecting to localhost:2181
+
+WATCHER::
+WatchedEvent state:SyncConnected type:None path:null
+{"version":0,"kraft_metadata_offset":1296,"kraft_controller_id":100,"kraft_metadata_epoch":3,"kraft_controller_epoch":3}
+----
+
 // ----------------------------------------------------------------------------------------------------------------------
 ---
 
 == Chapter 3: Stopping and Cleaning Up Services
 
 ### 3.1. Stop Services
-
-It is crucial to stop the services in the correct dependency order.
 
 1.  **Stop the Kafka Broker (Dual-Write):**
 
@@ -250,10 +260,10 @@ To completely reset the environment, delete the data directories (use caution wi
 [source, bash]
 ----
 # 1. Remove Kafka Data (Topics)
-rm -rf ~/Downloads/kafka_2.13-3.9.1.redhat-00006-2/kafka/*
+rm -rf /tmp/kafka_base/*
 
 # 2. Remove ZooKeeper Data (Logs/Snapshots)
-rm -rf ~/Downloads/kafka_2.13-3.9.1.redhat-00006-2/zookeeper/*
+rm -rf /tmp/zookeeper/*
 
 # 3. Remove KRaft Metadata Logs
 rm -rf /tmp/kafka-metadata-100 /tmp/kafka-metadata-101 /tmp/kafka-metadata-102
