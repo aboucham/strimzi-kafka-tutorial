@@ -156,7 +156,17 @@ Format Log Directories for Controllers For each controller node, format the stor
 
     **Verification (jcmd):** Confirms all three controller processes are running.
 
-=== 2.3. Enable Dual-Write on the Existing Broker
+[source, bash]
+----
+jcmd | grep kafka
+27330 org.apache.zookeeper.server.quorum.QuorumPeerMain /tmp/kafka_base/kafka/config/zookeeper.properties
+6340 kafka.Kafka ./config/kraft/controller-100.properties
+27946 kafka.Kafka /tmp/kafka_base/kafka/config/server.properties
+6924 kafka.Kafka ./config/kraft/controller-101.properties
+7503 kafka.Kafka ./config/kraft/controller-102.properties
+----
+
+=== 4 - Enable Dual-Write on the Existing Broker
 
 Update the existing Broker configuration to start writing metadata to the new KRaft quorum.
 
