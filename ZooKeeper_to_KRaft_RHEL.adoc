@@ -151,7 +151,9 @@ export CLUSTER_ID=SY9T31EKSS6XeNO_Jio6yQ
 [source, bash]
 ----
 ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-100.properties
+sleep 10
 ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-101.properties
+sleep 10
 ./bin/kafka-server-start.sh -daemon ./config/kraft/controller-102.properties
 ----
 
