@@ -167,6 +167,18 @@ jcmd | grep kafka
 7503 kafka.Kafka ./config/kraft/controller-102.properties
 ----
 
+    **Verification (logs):** Confirm the state has been changed from NON to PRE_MIGRATION on all three controllers.
+
+[source, bash]
+----
+grep "Replayed a ZkMigrationStateRecord changing the migration state from NONE to PRE_MIGRATION" ./logs/controller.log
+[2025-11-19 12:54:57,847] INFO [QuorumController id=100] Replayed a ZkMigrationStateRecord changing the migration state from NONE to PRE_MIGRATION. (org.apache.kafka.controller.FeatureControlManager)
+[2025-11-19 12:54:59,058] INFO [QuorumController id=101] Replayed a ZkMigrationStateRecord changing the migration state from NONE to PRE_MIGRATION. (org.apache.kafka.controller.FeatureControlManager)
+[2025-11-19 12:55:00,231] INFO [QuorumController id=102] Replayed a ZkMigrationStateRecord changing the migration state from NONE to PRE_MIGRATION. (org.apache.kafka.controller.FeatureControlManager)
+----
+
+*NOTE*: *PRE_MIGRATION* (the state where KRaft is preparing to ingest metadata from ZooKeeper).
+
 === 4 - Enable Dual-Write on the Existing Broker
 
 Enable Migration on Brokers and Rolling Restart (Phase 2) On each existing Kafka broker (one by one), enable migration by updating its configuration (`./config/server.properties`):
@@ -201,6 +213,14 @@ controller.quorum.bootstrap.servers=localhost:9090,localhost:9091,localhost:9094
 ./bin/kafka-server-start.sh -daemon ./config/server.properties
 ----
 
+    **Verification (logs):** Confirm the state has been changed from NON to PRE_MIGRATION on all three controllers.
+
+[source, bash]
+----
+grep "Replayed a ZkMigrationStateRecord changing the migration state from PRE_MIGRATION to MIGRATION" ./logs/controller.log
+[2025-11-19 13:02:10,383] INFO [QuorumController id=100] Replayed a ZkMigrationStateRecord changing the migration state from PRE_MIGRATION to MIGRATION. (org.apache.kafka.controller.FeatureControlManager)
+----
+
 === 2.4. Final Migration Validation (Dual-Write Complete)
 
 Monitor the active KRaft controller's log (e.g., controller 100) for the final confirmation message.
@@ -210,7 +230,14 @@ Monitor the active KRaft controller's log (e.g., controller 100) for the final c
 grep "Completing migration of ZooKeeper metadata to KRaft" ./logs/controller.log
 [2025-11-18 10:59:07,198] INFO [QuorumController id=100] Completing migration of ZooKeeper metadata to KRaft. (org.apache.kafka.controller.QuorumController)
 ----
-Once this log entry appears, the cluster is operating stably in the Dual-Write mode.
+
+[source, bash]
+----
+grep "Replayed a ZkMigrationStateRecord changing the migration state from PRE_MIGRATION to MIGRATION" ./logs/controller.log
+[2025-11-19 13:02:10,383] INFO [QuorumController id=100] Replayed a ZkMigrationStateRecord changing the migration state from PRE_MIGRATION to MIGRATION. (org.apache.kafka.controller.FeatureControlManager)
+----
+
+Once those logs entries appears, the cluster is operating stably in the **Dual-Write** mode.
 
 You can check also Zookeeper registry to get the information about the Kraft Leader / 
 [source, bash]
