@@ -333,9 +333,20 @@ grep "Kafka Server started" ./logs/server.log
 - Remove `inter.broker.listener.name`.
 - Restart the controller.
 
-Once completed, your Kafka cluster is fully operating in KRaft mode. You can now decommission the ZooKeeper nodes.
+**verification:**
 
-**Warning:** Once the migration is finalized (step 3 in Phase 3), **rollback to ZooKeeper is no longer possible**.
+[source, bash]
+----
+grep "Replayed a ZkMigrationStateRecord changing the migration state from MIGRATION to POST_MIGRATION." ./logs/controller.log
+[2025-11-19 13:21:33,606] INFO [QuorumController id=100] Replayed a ZkMigrationStateRecord changing the migration state from MIGRATION to POST_MIGRATION. (org.apache.kafka.controller.FeatureControlManager)
+----
+
+That log entry confirms the successful transition of your KRaft controller quorum to the final phase of the migration process! 🎉
+
+*POST_MIGRATION:* This is the terminal state of the migration process. It signals that the KRaft controllers are now considered the *exclusive source of truth* for cluster metadata, and the cluster is logically operating in KRaft mode.
+Once completed, your Kafka cluster is fully operating in KRaft mode. *You can now decommission the ZooKeeper nodes*.
+
+**Warning:** Once the migration is finalized, **rollback to ZooKeeper is no longer possible**.
 
 == Chapter 4: Stopping and Cleaning Up Services
 
