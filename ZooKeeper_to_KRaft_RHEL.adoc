@@ -253,19 +253,6 @@ WatchedEvent state:SyncConnected type:None path:null
 
 You can check also for the following log entries in the Kafka broker's `server.log` that confirm successful registration to both ZooKeeper and the KRaft quorum after enabling the migration configuration (Dual-Write mode):
 
-Zookeeper:
-
-[source, bash]
-----
-----
-
-Kraft:
-
-[source, bash]
-----
-----
-
-
 // ----------------------------------------------------------------------------------------------------------------------
 ---
 
