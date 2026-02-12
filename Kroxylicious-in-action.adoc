@@ -1,0 +1,191 @@
+= Tutorial: Deploying Red Hat Streams for Apache Kafka Proxy on OpenShift
+:toc: left
+:icons: font
+:source-highlighter: highlightjs
+
+This guide covers the step-by-step installation and configuration of the Streams for Apache Kafka Proxy (Kroxylicious) to provide internal and external access to a Strimzi Kafka cluster.
+
+== Prerequisites
+
+* OpenShift 4.18+ cluster.
+* `oc` CLI tool installed and configured.
+* Strimzi Operator installed with a Kafka cluster named `kafka-cluster` in the `strimzi` namespace.
+* AWS CLI and Route 53 access for external DNS automation.
+
+== Step 1: Install the Proxy Operator
+
+Install the operator from the *OperatorHub* in the OpenShift console or via installation files.
+
+[source,bash]
+----
+# Create a dedicated namespace for the operator
+oc new-project proxy-strimzi-operator
+
+# If using installation files, apply the manifest directory
+oc create -f install/
+----
+
+== Step 2: Configure Environment Variables
+
+Set the base domain for your OpenShift cluster and the container image for testing.
+
+[source,bash]
+----
+export DOMAIN_NAME="apps.abouchama-ai5.emea.aws.cee.support"
+export STRIMZI_IMAGE="registry.redhat.io/amq-streams/kafka-41-rhel9@sha256:d2d36a96481e99b22e833fb4a17a10750273128a9513e0e0fa1f59c5e0cfd871"
+
+# Helper function for running temporary Kafka pods
+krun() { kubectl run krun-"$(date +%s)" -it --rm --restart="Never" --image="$STRIMZI_IMAGE" -- "$@"; }
+----
+
+== Step 3: Create the TLS Secret for External Access
+
+The `loadBalancer` ingress type requires TLS. Generate a self-signed certificate with the required Subject Alternative Names (SANs).
+
+[source,bash]
+----
+oc new-project proxy-strimzi
+
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout tls.key \
+  -out tls.crt \
+  -subj "/CN=kafka-bootstrap.$DOMAIN_NAME" \
+  -addext "subjectAltName = DNS:kafka-bootstrap.$DOMAIN_NAME,DNS:broker-0.$DOMAIN_NAME,DNS:broker-1.$DOMAIN_NAME,DNS:broker-2.$DOMAIN_NAME"
+
+oc create secret tls external-tls-secret --cert=tls.crt --key=tls.key -n proxy-strimzi
+----
+
+== Step 4: Deploy Proxy Resources
+
+Deploy the `KafkaService`, `KafkaProxyIngress`, and `VirtualKafkaCluster` resources using a declarative approach.
+
+[source,bash]
+----
+# 1. Backend Service pointing to the Strimzi cluster
+oc create -f - <<EOF
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaService
+metadata:
+  name: strimzi-backend
+  namespace: proxy-strimzi
+spec:
+  bootstrapServers: kafka-cluster-kafka-bootstrap.strimzi.svc.cluster.local:9092
+  nodeIdRanges:
+    - start: 0
+      end: 2
+EOF
+
+# 2. Internal and External Ingresses
+oc create -f - <<EOF
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaProxyIngress
+metadata:
+  name: internal-ingress
+  namespace: proxy-strimzi
+spec:
+  proxyRef:
+    name: my-proxy
+  clusterIP:
+    protocol: TCP
+---
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaProxyIngress
+metadata:
+  name: external-ingress
+  namespace: proxy-strimzi
+spec:
+  proxyRef:
+    name: my-proxy
+  loadBalancer:
+    bootstrapAddress: "kafka-bootstrap.$DOMAIN_NAME"
+    advertisedBrokerAddressPattern: "broker-\$(nodeId).$DOMAIN_NAME"
+EOF
+
+# 3. Proxy and Virtual Cluster Instance
+oc create -f - <<EOF
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaProxy
+metadata:
+  name: my-proxy
+  namespace: proxy-strimzi
+spec: {}
+---
+apiVersion: kroxylicious.io/v1alpha1
+kind: VirtualKafkaCluster
+metadata:
+  name: my-virtual-cluster
+  namespace: proxy-strimzi
+spec:
+  proxyRef:
+    name: my-proxy
+  targetKafkaServiceRef:
+    name: strimzi-backend
+  ingresses:
+    - ingressRef:
+        name: internal-ingress
+    - ingressRef:
+        name: external-ingress
+      tls:
+        certificateRef:
+          name: external-tls-secret
+EOF
+----
+
+== Step 5: Automate External DNS (AWS Route 53)
+
+Identify your Hosted Zone ID and map your custom domain names to the AWS Load Balancer hostname.
+
+[source,bash]
+----
+# Replace with your actual Hosted Zone ID
+export HOSTED_ZONE_ID="Z01451071UN6GMEIQOSXU"
+export ELB_HOSTNAME=$(oc get svc -n proxy-strimzi -l kroxylicious.io/ingress-name=external-ingress -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}')
+
+cat <<EOF > dns-changes.json
+{
+  "Comment": "Kroxylicious SNI Routing",
+  "Changes": [
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "kafka-bootstrap.$DOMAIN_NAME.", "Type": "CNAME", "TTL": 60, "ResourceRecords": [{ "Value": "$ELB_HOSTNAME" }] } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "broker-0.$DOMAIN_NAME.", "Type": "CNAME", "TTL": 60, "ResourceRecords": [{ "Value": "$ELB_HOSTNAME" }] } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "broker-1.$DOMAIN_NAME.", "Type": "CNAME", "TTL": 60, "ResourceRecords": [{ "Value": "$ELB_HOSTNAME" }] } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "broker-2.$DOMAIN_NAME.", "Type": "CNAME", "TTL": 60, "ResourceRecords": [{ "Value": "$ELB_HOSTNAME" }] } }
+  ]
+}
+EOF
+
+aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://dns-changes.json
+----
+
+== Step 6: Testing Connectivity
+
+=== Internal Client (Port 9292)
+[source,bash]
+----
+INTERNAL_BOOTSTRAP="my-virtual-cluster-internal-ingress-bootstrap.proxy-strimzi.svc.cluster.local:9292"
+
+krun bin/kafka-console-producer.sh \
+  --bootstrap-server $INTERNAL_BOOTSTRAP \
+  --topic my-topic
+----
+
+=== External Client (Port 9083 with SSL)
+[source,bash]
+----
+EXTERNAL_BOOTSTRAP="kafka-bootstrap.$DOMAIN_NAME:9083"
+
+krun bin/kafka-console-producer.sh \
+  --bootstrap-server $EXTERNAL_BOOTSTRAP \
+  --topic my-topic \
+  --producer-property "security.protocol=SSL" \
+  --producer-property "ssl.endpoint.identification.algorithm="
+----
+
+== Monitoring
+
+View proxy metrics to verify traffic flow.
+
+[source,bash]
+----
+PROXY_POD=$(oc get pods -n proxy-strimzi -l app.kubernetes.io/component=proxy -o name | head -n 1)
+oc exec -n proxy-strimzi $PROXY_POD -- curl -s localhost:9190/metrics | grep kroxylicious_client_to_proxy
+----
