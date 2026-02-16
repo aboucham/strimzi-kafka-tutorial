@@ -12,7 +12,7 @@ This guide covers the step-by-step installation and configuration of the Streams
 * Strimzi Operator installed with a Kafka cluster named `kafka-cluster` in the `strimzi` namespace.
 * AWS CLI and Route 53 access for external DNS automation.
 
-== Deploy the Strimzi Kafka Cluster
+== Deploy the Strimzi Kafka Cluster /  Console
 
 Before installing the proxy, you must deploy the backend Kafka cluster. This guide uses a KRaft-enabled cluster (Kafka without ZooKeeper) deployed into the `strimzi` namespace.
 
@@ -25,8 +25,23 @@ oc project strimzi
 # Apply the KRaft-enabled Kafka cluster configuration
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-cluster-kraft-full.yaml
 
-# Wait for the Kafka pods to be ready
-oc wait kafka/kafka-cluster --for=condition=Ready --timeout=300s -n strimzi
+export KAFKA_CR_NAME="kafka-cluster"
+export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai5.emea.aws.cee.support"
+export NAMESPACE="strimzi"
+export KAFKA_LISTENER_NAME="plain"
+
+cat <<'EOF' | envsubst | oc apply -f -
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: my-console
+spec:
+  hostname: $UI_CONSOLE_URL
+  kafkaClusters:
+    - name: $KAFKA_CR_NAME
+      namespace: $NAMESPACE
+      listener: $KAFKA_LISTENER_NAME
+EOF
 ----
 
 == Step 1: Install the Proxy Operator
