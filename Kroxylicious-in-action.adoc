@@ -175,12 +175,13 @@ EOF
 == Step 5: Automate External DNS (AWS Route 53)
 
 Identify your Hosted Zone ID and map your custom domain names to the AWS Load Balancer hostname.
+Map custom domains to the AWS ELB hostname provided by the `my-proxy-sni` service.
 
 [source,bash]
 ----
-# Replace with your actual Hosted Zone ID
 export HOSTED_ZONE_ID="Z01451071UN6GMEIQOSXU"
-export ELB_HOSTNAME=$(oc get svc -n proxy-strimzi -l kroxylicious.io/ingress-name=external-ingress -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}')
+# Capturing the ELB hostname from the specific proxy service
+export ELB_HOSTNAME=$(oc get svc -n proxy-strimzi my-proxy-sni -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
 cat <<EOF > dns-changes.json
 {
