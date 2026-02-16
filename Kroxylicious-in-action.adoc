@@ -253,6 +253,19 @@ kubectl run krun-debug -it --rm --restart="Never" --image="$STRIMZI_IMAGE" \
       "volumes": [{"name": "certs", "secret": {"secretName": "proxy-client-trust"}}]
     }
   }' -- /bin/bash
+
+kubectl run krun-external -it --rm --restart="Never" --image="$STRIMZI_IMAGE" \
+  --overrides='{
+    "spec": {
+      "containers": [{
+        "name": "krun-external",
+        "image": "'$STRIMZI_IMAGE'",
+        "env": [{ "name": "DOMAIN_NAME", "value": "'$DOMAIN_NAME'" }],
+        "volumeMounts": [{ "name": "certs", "mountPath": "/opt/kafka/certs" }]
+      }],
+      "volumes": [{ "name": "certs", "secret": { "secretName": "proxy-client-trust" } }]
+    }
+  }'
 ----
 
 [source,bash]
