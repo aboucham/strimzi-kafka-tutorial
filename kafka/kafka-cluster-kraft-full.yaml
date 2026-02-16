@@ -306,3 +306,17 @@ spec:
           patternType: literal
           type: group
     type: simple
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: my-topic
+  namespace: strimzi
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  config:
+    retention.ms: 604800000
+    segment.bytes: 1073741824
+  partitions: 10
+  replicas: 3
