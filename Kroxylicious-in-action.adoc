@@ -258,7 +258,7 @@ kubectl run krun-debug -it --rm --restart="Never" --image="$STRIMZI_IMAGE" \
 [source,bash]
 ----
 oc rsh krun-debug bin/kafka-console-producer.sh \
-  --bootstrap-server kafka-bootstrap.$DOMAIN_NAME:9083 \
+  --bootstrap-server kafka-bootstrap.apps.aboucham-ai5.emea.aws.cee.support:9083 \
   --topic my-topic \
   --producer-property "security.protocol=SSL" \
   --producer-property "ssl.truststore.location=/opt/kafka/certs/client.truststore.jks" \
