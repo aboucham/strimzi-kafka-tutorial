@@ -177,9 +177,17 @@ EOF
 Identify your Hosted Zone ID and map your custom domain names to the AWS Load Balancer hostname.
 Map custom domains to the AWS ELB hostname provided by the `my-proxy-sni` service.
 
+First, get the hosted zone id:
+
 [source,bash]
 ----
-export HOSTED_ZONE_ID="Z01451071UN6GMEIQOSXU"
+aws route53 list-hosted-zones | jq -r '.HostedZones[] | select(.Name | contains("aboucham-ai5")) | .Id'
+Z0418850288MUT12DITXD
+----
+
+[source,bash]
+----
+export HOSTED_ZONE_ID="Z0418850288MUT12DITXD"
 # Capturing the ELB hostname from the specific proxy service
 export ELB_HOSTNAME=$(oc get svc -n proxy-strimzi my-proxy-sni -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
