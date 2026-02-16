@@ -23,7 +23,7 @@ oc new-project strimzi
 oc project strimzi
 
 # Apply the KRaft-enabled Kafka cluster configuration
-oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/full-Kafka-cluster-kraft.yaml
+oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-cluster-kraft-full.yaml
 
 # Wait for the Kafka pods to be ready
 oc wait kafka/kafka-cluster --for=condition=Ready --timeout=300s -n strimzi
