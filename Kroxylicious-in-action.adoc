@@ -235,12 +235,47 @@ krun bin/kafka-console-producer.sh \
 [source,bash]
 ----
 EXTERNAL_BOOTSTRAP="kafka-bootstrap.$DOMAIN_NAME:9083"
+export DOMAIN_NAME="apps.abouchama-ai5.emea.aws.cee.support"
+----
 
-krun bin/kafka-console-producer.sh \
-  --bootstrap-server $EXTERNAL_BOOTSTRAP \
+[source,bash]
+----
+kubectl run krun-debug -it --rm --restart="Never" --image="$STRIMZI_IMAGE" \
+  --overrides='{
+    "spec": {
+      "containers": [{
+        "name": "krun-debug",
+        "image": "'$STRIMZI_IMAGE'",
+        "command": ["/bin/bash", "-c", "--"],
+        "args": ["while true; do sleep 30; done;"],
+        "volumeMounts": [{"name": "certs", "mountPath": "/opt/kafka/certs"}]
+      }],
+      "volumes": [{"name": "certs", "secret": {"secretName": "proxy-client-trust"}}]
+    }
+  }' -- /bin/bash
+----
+
+[source,bash]
+----
+oc rsh krun-debug bin/kafka-console-producer.sh \
+  --bootstrap-server kafka-bootstrap.$DOMAIN_NAME:9083 \
   --topic my-topic \
   --producer-property "security.protocol=SSL" \
+  --producer-property "ssl.truststore.location=/opt/kafka/certs/client.truststore.jks" \
+  --producer-property "ssl.truststore.password=mypassword" \
   --producer-property "ssl.endpoint.identification.algorithm="
+----
+
+[source,bash]
+----
+oc rsh krun-debug bin/kafka-console-consumer.sh \
+  --bootstrap-server kafka-bootstrap.$DOMAIN_NAME:9083 \
+  --topic my-topic \
+  --from-beginning \
+  --consumer-property "security.protocol=SSL" \
+  --consumer-property "ssl.truststore.location=/opt/kafka/certs/client.truststore.jks" \
+  --consumer-property "ssl.truststore.password=mypassword" \
+  --consumer-property "ssl.endpoint.identification.algorithm="
 ----
 
 == Monitoring
