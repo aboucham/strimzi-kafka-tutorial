@@ -50,8 +50,20 @@ Install the operator from the *OperatorHub* in the OpenShift console or via inst
 
 [source,bash]
 ----
-# Create a dedicated namespace for the operator
-oc new-project proxy-strimzi-operator
+oc create -f - <<EOF
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: amq-streams-proxy
+  namespace: openshift-operators
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: amq-streams-proxy
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: amq-streams-proxy.v3.1.0-12
+EOF
 ----
 
 == Step 2: Configure Environment Variables
