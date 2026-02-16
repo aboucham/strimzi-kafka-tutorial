@@ -87,13 +87,26 @@ The `loadBalancer` ingress type requires TLS. Generate a self-signed certificate
 ----
 oc new-project proxy-strimzi
 
+# 1. Generate the private key and certificate
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout tls.key \
   -out tls.crt \
   -subj "/CN=kafka-bootstrap.$DOMAIN_NAME" \
   -addext "subjectAltName = DNS:kafka-bootstrap.$DOMAIN_NAME,DNS:broker-0.$DOMAIN_NAME,DNS:broker-1.$DOMAIN_NAME,DNS:broker-2.$DOMAIN_NAME"
 
+# 2. Create the TLS secret for the Kroxylicious Proxy
 oc create secret tls external-tls-secret --cert=tls.crt --key=tls.key -n proxy-strimzi
+
+# 3. Create the Java Truststore (JKS) for clients
+keytool -import -file tls.crt \
+  -alias kroxylicious-proxy \
+  -keystore client.truststore.jks \
+  -storepass mypassword \
+  -noprompt
+
+# 4. Create a Secret containing the Truststore for testing
+oc create secret generic proxy-client-trust \
+  --from-file=client.truststore.jks -n proxy-strimzi
 ----
 
 == Step 4: Deploy Proxy Resources
