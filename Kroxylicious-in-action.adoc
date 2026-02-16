@@ -203,7 +203,20 @@ cat <<EOF > dns-changes.json
 }
 EOF
 
-aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://dns-changes.json
+Execute the change and capture the Change ID
+CHANGE_ID=$(aws route53 change-resource-record-sets \
+  --hosted-zone-id "$HOSTED_ZONE_ID" \
+  --change-batch file://dns-changes.json \
+  --query "ChangeInfo.Id" \
+  --output text)
+
+echo "Change submitted. ID: $CHANGE_ID"
+echo "Waiting for DNS propagation (this typically takes 60-90 seconds)..."
+
+# 2. Wait until the status is INSYNC
+aws route53 wait resource-record-sets-changed --id "$CHANGE_ID"
+
+echo "✅ DNS is now INSYNC. You can proceed with the external producer test."
 ----
 
 == Step 6: Testing Connectivity
