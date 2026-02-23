@@ -304,3 +304,34 @@ View proxy metrics to verify traffic flow.
 PROXY_POD=$(oc get pods -n proxy-strimzi -l app.kubernetes.io/component=proxy -o name | head -n 1)
 oc exec -n proxy-strimzi $PROXY_POD -- curl -s localhost:9190/metrics | grep kroxylicious_client_to_proxy
 ----
+
+== Troubleshooting and Traffic flow
+
+=== TroubleShooting
+In both cases, logging levels are controlled using two environment variables:
+
+`KROXYLICIOUS_APP_LOG_LEVEL` controls the logging of the application (`io.kroxylicious loggers`). It defaults to `INFO`.
+`KROXYLICIOUS_ROOT_LOG_LEVEL` controls the logging level at the root. It defaults to `WARN`.
+
+[source,bash]
+----
+oc set env deploy/my-proxy \
+  KROXYLICIOUS_APP_LOG_LEVEL=DEBUG
+----
+
+=== Traffic flow:
+
+If a client cannot connect, use `KROXYLICIOUS_APP_LOG_LEVEL=DEBUG` and trace the request in this order:
+
+1. **Check Connectivity**: Do you see `New connection from <IP>`? 
+   - *No?* Check AWS Security Groups and ELB Listeners.
+2. **Check TLS**: Do you see `Adding SSL/SNI handler`?
+   - *No?* Ensure your producer property `security.protocol` is set to `SSL`.
+3. **Check Metadata (The "Redirection")**: Search for `BrokerAddress (internal) forwarding response`. 
+   - **Crucial**: Ensure the `host` values match your Route 53 CNAMEs (e.g., `broker-0.apps...`).
+4. **Check Execution**: Search for `PRODUCE` or `FETCH`.
+   - *Error?* Check the `errorCode`. `0` means success. Anything else indicates a backend Strimzi issue.
+
+=== Internal vs. External Verification
+- **External clients** must use port **9083** and have the **JKS Truststore** configured.
+- **Internal clients** use the ClusterIP service on port **9292** and do not require SNI-based routing.
