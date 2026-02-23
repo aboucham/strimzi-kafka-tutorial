@@ -194,15 +194,18 @@ First, get the hosted zone id:
 
 [source,bash]
 ----
-aws route53 list-hosted-zones | jq -r '.HostedZones[] | select(.Name | contains("aboucham-ai5")) | .Id'
-Z0418850288MUT12DITXD
+export HOSTED_ZONE_ID=$(aws route53 list-hosted-zones \
+  --query "HostedZones[?contains(Name, 'aboucham-ai6')].Id" \
+  --output text | sed 's|/hostedzone/||')
+
+echo $HOSTED_ZONE_ID
 ----
 
 [source,bash]
 ----
-export HOSTED_ZONE_ID="Z0418850288MUT12DITXD"
 # Capturing the ELB hostname from the specific proxy service
 export ELB_HOSTNAME=$(oc get svc -n proxy-strimzi my-proxy-sni -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+echo $ELB_HOSTNAME
 
 cat <<EOF > dns-changes.json
 {
