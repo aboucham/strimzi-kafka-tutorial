@@ -219,7 +219,7 @@ cat <<EOF > dns-changes.json
 }
 EOF
 
-Execute the change and capture the Change ID
+# Execute the change and capture the Change ID
 CHANGE_ID=$(aws route53 change-resource-record-sets \
   --hosted-zone-id "$HOSTED_ZONE_ID" \
   --change-batch file://dns-changes.json \
