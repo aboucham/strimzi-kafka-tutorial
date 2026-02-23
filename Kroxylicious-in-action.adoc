@@ -77,6 +77,7 @@ export STRIMZI_IMAGE="registry.redhat.io/amq-streams/kafka-41-rhel9@sha256:d2d36
 
 # Helper function for running temporary Kafka pods
 krun() { kubectl run krun-"$(date +%s)" -it --rm --restart="Never" --image="$STRIMZI_IMAGE" -- "$@"; }
+echo $DOMAIN_NAME
 ----
 
 == Step 3: Create the TLS Secret for External Access
