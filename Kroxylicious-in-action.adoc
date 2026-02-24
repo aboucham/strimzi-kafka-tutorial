@@ -379,6 +379,8 @@ The proxy uses SNI to route traffic. Your TLS secret (`external-tls-secret`) mus
 [source,bash]
 ----
 # Regenerate cert with SANs for both the primary cluster and the second tenant
+rm tls.crt client.truststore.jks tls.key
+
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout tls.key \
   -out tls.crt \
