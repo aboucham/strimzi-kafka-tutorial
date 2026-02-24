@@ -500,7 +500,7 @@ Test external access to the second cluster using the new tenant-specific bootstr
 ----
 oc rsh krun-debug bin/kafka-console-producer.sh \
   --bootstrap-server my-cluster-bootstrap.$DOMAIN_NAME:9083 \
-  --topic tenant-b-topic \
+  --topic my-topic \
   --producer-property "security.protocol=SSL" \
   --producer-property "ssl.truststore.location=/opt/kafka/certs/client.truststore.jks" \
   --producer-property "ssl.truststore.password=mypassword" \
