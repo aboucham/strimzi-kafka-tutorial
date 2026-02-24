@@ -348,15 +348,15 @@ we will expose an existing Kafka cluster named `my-cluster` in the `kafka` names
 [source,bash]
 ----
 # Create and switch to the strimzi namespace
-oc new-project kafka
-oc project kafka
+oc new-project streams
+oc project streams
 
 # Apply the KRaft-enabled Kafka cluster configuration
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/my-cluster-kraft-full.yaml
 
 export KAFKA_CR_NAME="my-cluster"
 export UI_CONSOLE_URL="my-cluster-console-ui.apps.aboucham-ai6.emea.aws.cee.support"
-export NAMESPACE="kafka"
+export NAMESPACE="streams"
 export KAFKA_LISTENER_NAME="plain"
 
 cat <<'EOF' | envsubst | oc apply -f -
@@ -401,7 +401,7 @@ metadata:
   name: my-cluster-backend
   namespace: proxy-strimzi
 spec:
-  bootstrapServers: my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+  bootstrapServers: my-cluster-kafka-bootstrap.streams.svc.cluster.local:9092
   nodeIdRanges:
     - start: 0
       end: 2
