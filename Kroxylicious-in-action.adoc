@@ -335,3 +335,158 @@ If a client cannot connect, use `KROXYLICIOUS_APP_LOG_LEVEL=DEBUG` and trace the
 === Internal vs. External Verification
 - **External clients** must use port **9083** and have the **JKS Truststore** configured.
 - **Internal clients** use the ClusterIP service on port **9292** and do not require SNI-based routing.
+
+
+== Step 7: Multi-tenant Configuration
+
+Streams for Apache Kafka Proxy (`Kroxylicious`) supports a multi-tenant architecture where a single proxy instance manages multiple Virtual Clusters. This allows different external DNS endpoints (SNIs) to map to distinct backend Strimzi Kafka clusters.
+
+In this section, we expose a second Kafka cluster named `my-cluster` (located in the `kafka` namespace) using the existing `my-proxy` infrastructure in the `proxy-strimzi` namespace.
+
+we will expose an existing Kafka cluster named `my-cluster` in the `kafka` namespace:
+
+[source,bash]
+----
+# Create and switch to the strimzi namespace
+oc new-project kafka
+oc project kafka
+
+# Apply the KRaft-enabled Kafka cluster configuration
+oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/my-cluster-kraft-full.yaml
+
+export KAFKA_CR_NAME="my-cluster"
+export UI_CONSOLE_URL="my-cluster-console-ui.apps.aboucham-ai6.emea.aws.cee.support"
+export NAMESPACE="kafka"
+export KAFKA_LISTENER_NAME="plain"
+
+cat <<'EOF' | envsubst | oc apply -f -
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: my-console
+spec:
+  hostname: $UI_CONSOLE_URL
+  kafkaClusters:
+    - name: $KAFKA_CR_NAME
+      namespace: $NAMESPACE
+      listener: $KAFKA_LISTENER_NAME
+EOF
+----
+
+=== 1. Update the TLS Certificate for the New Tenant
+The proxy uses SNI to route traffic. Your TLS secret (`external-tls-secret`) must contain the Subject Alternative Names (`SANs`) for the new tenant to ensure SSL handshakes succeed for the new domains.
+
+[source,bash]
+----
+# Regenerate cert with SANs for both the primary cluster and the second tenant
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout tls.key \
+  -out tls.crt \
+  -subj "/CN=kafka-bootstrap.$DOMAIN_NAME" \
+  -addext "subjectAltName = DNS:kafka-bootstrap.$DOMAIN_NAME,DNS:broker-0.$DOMAIN_NAME,DNS:broker-1.$DOMAIN_NAME,DNS:broker-2.$DOMAIN_NAME,DNS:my-cluster-bootstrap.$DOMAIN_NAME,DNS:my-cluster-broker-0.$DOMAIN_NAME,DNS:my-cluster-broker-1.$DOMAIN_NAME,DNS:my-cluster-broker-2.$DOMAIN_NAME"
+
+# Update the secret in the proxy namespace
+oc create secret tls external-tls-secret --cert=tls.crt --key=tls.key --dry-run=client -o yaml | oc apply -f - -n proxy-strimzi
+----
+
+=== 2. Create the Backend Service for the Second Cluster
+Define a `KafkaService` resource that points to the internal bootstrap service of the `my-cluster` cluster located in the `kafka` namespace.
+
+[source,bash]
+----
+oc create -f - <<EOF
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaService
+metadata:
+  name: my-cluster-backend
+  namespace: proxy-strimzi
+spec:
+  bootstrapServers: my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+  nodeIdRanges:
+    - start: 0
+      end: 2
+EOF
+----
+
+=== 3. Create the Tenant-specific External Ingress
+Define a new ingress with a unique naming pattern for the second tenant. Kroxylicious uses the incoming `SNI hostname` to `route` traffic to the correct `VirtualKafkaCluster`.
+
+[source,bash]
+----
+oc create -f - <<EOF
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaProxyIngress
+metadata:
+  name: my-cluster-external-ingress
+  namespace: proxy-strimzi
+spec:
+  proxyRef:
+    name: my-proxy
+  loadBalancer:
+    bootstrapAddress: "my-cluster-bootstrap.$DOMAIN_NAME"
+    advertisedBrokerAddressPattern: "my-cluster-broker-\$(nodeId).$DOMAIN_NAME"
+EOF
+----
+
+=== 4. Deploy the Second Virtual Kafka Cluster
+
+Link the new backend (`my-cluster-backend`) and the new ingress (`my-cluster-external-ingress`) to the existing `my-proxy` instance.
+
+[source,bash]
+----
+oc create -f - <<EOF
+apiVersion: kroxylicious.io/v1alpha1
+kind: VirtualKafkaCluster
+metadata:
+  name: virtual-cluster-tenant-b
+  namespace: proxy-strimzi
+spec:
+  proxyRef:
+    name: my-proxy
+  targetKafkaServiceRef:
+    name: my-cluster-backend
+  ingresses:
+    - ingressRef:
+        name: my-cluster-external-ingress
+      tls:
+        certificateRef:
+          name: external-tls-secret
+EOF
+----
+
+=== 5. Update Route 53 for Tenant-B DNS
+Map the new tenant addresses to the existing AWS Load Balancer hostname.
+
+[source,bash]
+----
+# Ensure ELB_HOSTNAME and HOSTED_ZONE_ID are exported from previous steps
+cat <<EOF > dns-multi-tenant.json
+{
+  "Comment": "Kroxylicious Multi-tenant Routing for my-cluster",
+  "Changes": [
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "my-cluster-bootstrap.$DOMAIN_NAME.", "Type": "CNAME", "TTL": 60, "ResourceRecords": [{ "Value": "$ELB_HOSTNAME" }] } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "my-cluster-broker-0.$DOMAIN_NAME.", "Type": "CNAME", "TTL": 60, "ResourceRecords": [{ "Value": "$ELB_HOSTNAME" }] } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "my-cluster-broker-1.$DOMAIN_NAME.", "Type": "CNAME", "TTL": 60, "ResourceRecords": [{ "Value": "$ELB_HOSTNAME" }] } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "my-cluster-broker-2.$DOMAIN_NAME.", "Type": "CNAME", "TTL": 60, "ResourceRecords": [{ "Value": "$ELB_HOSTNAME" }] } }
+  ]
+}
+EOF
+
+aws route53 change-resource-record-sets \
+  --hosted-zone-id "$HOSTED_ZONE_ID" \
+  --change-batch file://dns-multi-tenant.json
+----
+
+=== 6. Verify Tenant-B Connectivity
+Test external access to the second cluster using the new tenant-specific bootstrap URL.
+
+[source,bash]
+----
+oc rsh krun-debug bin/kafka-console-producer.sh \
+  --bootstrap-server my-cluster-bootstrap.$DOMAIN_NAME:9083 \
+  --topic tenant-b-topic \
+  --producer-property "security.protocol=SSL" \
+  --producer-property "ssl.truststore.location=/opt/kafka/certs/client.truststore.jks" \
+  --producer-property "ssl.truststore.password=mypassword" \
+  --producer-property "ssl.endpoint.identification.algorithm="
+----
