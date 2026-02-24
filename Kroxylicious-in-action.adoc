@@ -493,8 +493,8 @@ aws route53 wait resource-record-sets-changed --id "$CHANGE_ID"
 echo "✅ Multi-tenant DNS is now INSYNC for my-cluster. You can proceed with the test."
 ----
 
-=== 6. Verify Tenant-B Connectivity
-Test external access to the second cluster using the new tenant-specific bootstrap URL.
+=== 6. Test Connectivity to the Second Cluster
+Now verify you can produce messages to the new cluster `my-cluster` in the `streams` namespace via the same Proxy.
 
 [source,bash]
 ----
@@ -506,3 +506,55 @@ oc rsh krun-debug bin/kafka-console-producer.sh \
   --producer-property "ssl.truststore.password=mypassword" \
   --producer-property "ssl.endpoint.identification.algorithm="
 ----
+
+=== 7. Update Trust and Restart Test Pod
+
+Since we added new DNS names for `my-cluster`, we must update our Truststore so the client recognizes the new identities.
+
+[source,bash]
+----
+# 1. Regenerate the JKS with the updated certificate
+rm client.truststore.jks
+keytool -import -file tls.crt -alias multi-cluster-proxy \
+  -keystore client.truststore.jks -storepass mypassword -noprompt
+
+# 2. Update the Kubernetes Secret
+oc create secret generic proxy-client-trust \
+  --from-file=client.truststore.jks -n proxy-strimzi \
+  --dry-run=client -o yaml | oc apply -f -
+
+# 3. Restart the debug pod to mount the new secret
+oc delete pod krun-debug --ignore-not-found
+# (Re-run the 'kubectl run krun-debug' command from Step 6 here)
+
+kubectl run krun-debug -it --rm --restart="Never" --image="$STRIMZI_IMAGE" \
+  --overrides='{
+    "spec": {
+      "containers": [{
+        "name": "krun-debug",
+        "image": "'$STRIMZI_IMAGE'",
+        "command": ["/bin/bash", "-c", "--"],
+        "args": ["while true; do sleep 30; done;"],
+        "volumeMounts": [{"name": "certs", "mountPath": "/opt/kafka/certs"}]
+      }],
+      "volumes": [{"name": "certs", "secret": {"secretName": "proxy-client-trust"}}]
+    }
+  }' -- /bin/bash
+
+# Final check for the update of the client certificate `client.truststore.jks`:
+
+oc rsh krun-debug keytool -list -v -keystore /opt/kafka/certs/client.truststore.jks -storepass mypassword | grep -A 9 "SubjectAlternativeName"
+
+#Expected output:
+#SubjectAlternativeName [
+#  DNSName: kafka-bootstrap.apps.aboucham-ai6.emea.aws.cee.support
+#  DNSName: broker-0.apps.aboucham-ai6.emea.aws.cee.support
+#  DNSName: broker-1.apps.aboucham-ai6.emea.aws.cee.support
+#  DNSName: broker-2.apps.aboucham-ai6.emea.aws.cee.support
+#  DNSName: my-cluster-bootstrap.apps.aboucham-ai6.emea.aws.cee.support
+#  DNSName: my-cluster-broker-0.apps.aboucham-ai6.emea.aws.cee.support
+#  DNSName: my-cluster-broker-1.apps.aboucham-ai6.emea.aws.cee.support
+#  DNSName: my-cluster-broker-2.apps.aboucham-ai6.emea.aws.cee.support
+#]
+----
+
