@@ -477,9 +477,20 @@ cat <<EOF > dns-multi-tenant.json
 }
 EOF
 
-aws route53 change-resource-record-sets \
+# Execute the change and capture the Change ID
+CHANGE_ID=$(aws route53 change-resource-record-sets \
   --hosted-zone-id "$HOSTED_ZONE_ID" \
-  --change-batch file://dns-multi-tenant.json
+  --change-batch file://dns-multi-tenant.json \
+  --query "ChangeInfo.Id" \
+  --output text)
+
+echo "Change submitted. ID: $CHANGE_ID"
+echo "Waiting for Multi-tenant DNS propagation (this typically takes 60-90 seconds)..."
+
+# Wait until the status is INSYNC
+aws route53 wait resource-record-sets-changed --id "$CHANGE_ID"
+
+echo "✅ Multi-tenant DNS is now INSYNC for my-cluster. You can proceed with the test."
 ----
 
 === 6. Verify Tenant-B Connectivity
