@@ -462,6 +462,9 @@ Map the new tenant addresses to the existing AWS Load Balancer hostname.
 [source,bash]
 ----
 # Ensure ELB_HOSTNAME and HOSTED_ZONE_ID are exported from previous steps
+echo $HOSTED_ZONE_ID
+ECHO $ELB_HOSTNAME
+
 cat <<EOF > dns-multi-tenant.json
 {
   "Comment": "Kroxylicious Multi-tenant Routing for my-cluster",
