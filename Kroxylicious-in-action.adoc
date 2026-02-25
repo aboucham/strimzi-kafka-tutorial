@@ -188,7 +188,7 @@ EOF
 
 We reached the following based on the above steps:
 
-image::kafka/KafkaProxy-use.png[Kafka Proxy Use Case]
+image::kafka/KafkaProxy-usecase.png[Kafka Proxy Use Case]
 
 == Step 5: Automate External DNS (AWS Route 53)
 
