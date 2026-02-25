@@ -26,7 +26,7 @@ oc project strimzi
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-cluster-kraft-full.yaml
 
 export KAFKA_CR_NAME="kafka-cluster"
-export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai6.emea.aws.cee.support"
+export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai7.emea.aws.cee.support"
 export NAMESPACE="strimzi"
 export KAFKA_LISTENER_NAME="plain"
 
@@ -72,7 +72,7 @@ Set the base domain for your OpenShift cluster and the container image for testi
 
 [source,bash]
 ----
-export DOMAIN_NAME="apps.aboucham-ai6.emea.aws.cee.support"
+export DOMAIN_NAME="apps.aboucham-ai7.emea.aws.cee.support"
 export STRIMZI_IMAGE="registry.redhat.io/amq-streams/kafka-41-rhel9@sha256:d2d36a96481e99b22e833fb4a17a10750273128a9513e0e0fa1f59c5e0cfd871"
 
 # Helper function for running temporary Kafka pods
@@ -196,7 +196,7 @@ First, get the hosted zone id:
 [source,bash]
 ----
 export HOSTED_ZONE_ID=$(aws route53 list-hosted-zones \
-  --query "HostedZones[?contains(Name, 'aboucham-ai6')].Id" \
+  --query "HostedZones[?contains(Name, 'aboucham-ai7')].Id" \
   --output text | sed 's|/hostedzone/||')
 
 echo $HOSTED_ZONE_ID
@@ -275,7 +275,7 @@ kubectl run krun-debug -it --rm --restart="Never" --image="$STRIMZI_IMAGE" \
 [source,bash]
 ----
 oc rsh krun-debug bin/kafka-console-producer.sh \
-  --bootstrap-server kafka-bootstrap.apps.aboucham-ai6.emea.aws.cee.support:9083 \
+  --bootstrap-server kafka-bootstrap.apps.aboucham-ai7.emea.aws.cee.support:9083 \
   --topic my-topic \
   --producer-property "security.protocol=SSL" \
   --producer-property "ssl.truststore.location=/opt/kafka/certs/client.truststore.jks" \
@@ -286,7 +286,7 @@ oc rsh krun-debug bin/kafka-console-producer.sh \
 [source,bash]
 ----
 oc rsh krun-debug bin/kafka-console-consumer.sh \
-  --bootstrap-server kafka-bootstrap.apps.aboucham-ai6.emea.aws.cee.support:9083 \
+  --bootstrap-server kafka-bootstrap.apps.aboucham-ai7.emea.aws.cee.support:9083 \
   --topic my-topic \
   --from-beginning \
   --consumer-property "security.protocol=SSL" \
@@ -355,7 +355,7 @@ oc project streams
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/my-cluster-kraft-full.yaml
 
 export KAFKA_CR_NAME="my-cluster"
-export UI_CONSOLE_URL="my-cluster-console-ui.apps.aboucham-ai6.emea.aws.cee.support"
+export UI_CONSOLE_URL="my-cluster-console-ui.apps.aboucham-ai7.emea.aws.cee.support"
 export NAMESPACE="streams"
 export KAFKA_LISTENER_NAME="plain"
 
@@ -547,13 +547,13 @@ oc rsh krun-debug keytool -list -v -keystore /opt/kafka/certs/client.truststore.
 
 #Expected output:
 #SubjectAlternativeName [
-#  DNSName: kafka-bootstrap.apps.aboucham-ai6.emea.aws.cee.support
-#  DNSName: broker-0.apps.aboucham-ai6.emea.aws.cee.support
-#  DNSName: broker-1.apps.aboucham-ai6.emea.aws.cee.support
-#  DNSName: broker-2.apps.aboucham-ai6.emea.aws.cee.support
-#  DNSName: my-cluster-bootstrap.apps.aboucham-ai6.emea.aws.cee.support
-#  DNSName: my-cluster-broker-0.apps.aboucham-ai6.emea.aws.cee.support
-#  DNSName: my-cluster-broker-1.apps.aboucham-ai6.emea.aws.cee.support
-#  DNSName: my-cluster-broker-2.apps.aboucham-ai6.emea.aws.cee.support
+#  DNSName: kafka-bootstrap.apps.aboucham-ai7.emea.aws.cee.support
+#  DNSName: broker-0.apps.aboucham-ai7.emea.aws.cee.support
+#  DNSName: broker-1.apps.aboucham-ai7.emea.aws.cee.support
+#  DNSName: broker-2.apps.aboucham-ai7.emea.aws.cee.support
+#  DNSName: my-cluster-bootstrap.apps.aboucham-ai7.emea.aws.cee.support
+#  DNSName: my-cluster-broker-0.apps.aboucham-ai7.emea.aws.cee.support
+#  DNSName: my-cluster-broker-1.apps.aboucham-ai7.emea.aws.cee.support
+#  DNSName: my-cluster-broker-2.apps.aboucham-ai7.emea.aws.cee.support
 #]
 ----
