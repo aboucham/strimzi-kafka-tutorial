@@ -186,6 +186,10 @@ spec:
 EOF
 ----
 
+We reached the following based on the above steps:
+
+image::kafka/KafkaProxy-use.png[Kafka Proxy Use Case]
+
 == Step 5: Automate External DNS (AWS Route 53)
 
 Identify your Hosted Zone ID and map your custom domain names to the AWS Load Balancer hostname.
@@ -455,6 +459,10 @@ spec:
           name: external-tls-secret
 EOF
 ----
+
+We reached the following based on the above steps:
+
+image::kafka/KafkaProxy-MultiTenant.png[Kafka Proxy MultiTenant]
 
 === 5. Update Route 53 for Tenant-B DNS
 Map the new tenant addresses to the existing AWS Load Balancer hostname.
