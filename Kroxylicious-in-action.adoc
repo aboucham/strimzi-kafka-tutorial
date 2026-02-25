@@ -26,7 +26,7 @@ oc project strimzi
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-cluster-kraft-full.yaml
 
 export KAFKA_CR_NAME="kafka-cluster"
-export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai5.emea.aws.cee.support"
+export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai6.emea.aws.cee.support"
 export NAMESPACE="strimzi"
 export KAFKA_LISTENER_NAME="plain"
 
@@ -72,7 +72,7 @@ Set the base domain for your OpenShift cluster and the container image for testi
 
 [source,bash]
 ----
-export DOMAIN_NAME="apps.abouchama-ai5.emea.aws.cee.support"
+export DOMAIN_NAME="apps.aboucham-ai6.emea.aws.cee.support"
 export STRIMZI_IMAGE="registry.redhat.io/amq-streams/kafka-41-rhel9@sha256:d2d36a96481e99b22e833fb4a17a10750273128a9513e0e0fa1f59c5e0cfd871"
 
 # Helper function for running temporary Kafka pods
@@ -275,7 +275,7 @@ kubectl run krun-debug -it --rm --restart="Never" --image="$STRIMZI_IMAGE" \
 [source,bash]
 ----
 oc rsh krun-debug bin/kafka-console-producer.sh \
-  --bootstrap-server kafka-bootstrap.apps.aboucham-ai5.emea.aws.cee.support:9083 \
+  --bootstrap-server kafka-bootstrap.apps.aboucham-ai6.emea.aws.cee.support:9083 \
   --topic my-topic \
   --producer-property "security.protocol=SSL" \
   --producer-property "ssl.truststore.location=/opt/kafka/certs/client.truststore.jks" \
@@ -286,7 +286,7 @@ oc rsh krun-debug bin/kafka-console-producer.sh \
 [source,bash]
 ----
 oc rsh krun-debug bin/kafka-console-consumer.sh \
-  --bootstrap-server kafka-bootstrap.apps.aboucham-ai5.emea.aws.cee.support:9083 \
+  --bootstrap-server kafka-bootstrap.apps.aboucham-ai6.emea.aws.cee.support:9083 \
   --topic my-topic \
   --from-beginning \
   --consumer-property "security.protocol=SSL" \
@@ -557,4 +557,3 @@ oc rsh krun-debug keytool -list -v -keystore /opt/kafka/certs/client.truststore.
 #  DNSName: my-cluster-broker-2.apps.aboucham-ai6.emea.aws.cee.support
 #]
 ----
-
