@@ -47,6 +47,7 @@ metadata:
     strimzi.io/cluster: kafka-cluster
     template: kafka-cluster
 spec:
+  cruiseControl: {}
   entityOperator:
     topicOperator: {}
     userOperator: {}
