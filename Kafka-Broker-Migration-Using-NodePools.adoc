@@ -117,6 +117,14 @@ oc get kafkarebalance migrate-data -o wide -w
 oc annotate kafkarebalance migrate-data strimzi.io/rebalance=approve
 ----
 
+In the logs of the cruise controll pod, you should expect see those lines, once the task is completed:
+
+[source,bash]
+----
+kafka-cluster-cruise-control-56db5b7fdf-df4nd cruise-control 2026-03-19 10:29:49 INFO  Executor:1893 - User task 1aa4a140-23f6-4ba2-ab97-554bb1097a6b: Finished tasks: [{EXE_ID: 75, INTER_BROKER_REPLICA_ACTION, {strimzi.cruisecontrol.modeltrainingsamples-14, oldLeader: 0, [0, 1, 2] -> [6, 7, 8]}, COMPLETED}, {EXE_ID: 76, INTER_BROKER_REPLICA_ACTION, {strimzi.cruisecontrol.modeltrainingsamples-0, oldLeader: 0, [0, 1, 2] -> [6, 7, 8]}, COMPLETED}, {EXE_ID: 77, INTER_BROKER_REPLICA_ACTION, {my-topic-5, oldLeader: 0, [0, 1, 2] -> [6, 7, 8]}, COMPLETED}].
+kafka-cluster-cruise-control-56db5b7fdf-df4nd cruise-control 2026-03-19 10:29:49 INFO  Executor:1636 - User task 1aa4a140-23f6-4ba2-ab97-554bb1097a6b: 78/78 (100.00%) inter-broker partition movements completed. 0/0 (100%) MB have been moved.
+----
+
 == Phase 6: Verification and Cleanup
 Verify that all data has successfully moved to the new pool.
 
