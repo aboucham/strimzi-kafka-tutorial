@@ -22,6 +22,24 @@ oc project strimzi
 
 # Deploy the KRaft Kafka cluster
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-cluster-kraft-full.yaml
+
+export KAFKA_CR_NAME="kafka-cluster"
+export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai9.emea.aws.cee.support"
+export NAMESPACE="strimzi"
+export KAFKA_LISTENER_NAME="plain"
+
+cat <<'EOF' | envsubst | oc apply -f -
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: my-console
+spec:
+  hostname: $UI_CONSOLE_URL
+  kafkaClusters:
+    - name: $KAFKA_CR_NAME
+      namespace: $NAMESPACE
+      listener: $KAFKA_LISTENER_NAME
+EOF
 ----
 
 === Check Deployment Status
@@ -32,15 +50,7 @@ Verify that the initial brokers (IDs 0, 1, 2) and controllers (IDs 3, 4, 5) are 
 oc get pods -n strimzi
 ----
 
-== Phase 2: Enable Cruise Control
-Enable Cruise Control to manage the data movement. This triggers a rolling update of all Kafka brokers to enable the Metrics Reporter.
-
-[source,bash]
-----
-oc patch kafka kafka-cluster -n strimzi --type=merge -p '{"spec": {"cruiseControl": {}}}'
-----
-
-== Phase 3: Create Test Data
+== Phase 2: Create Test Data
 Create three topics to verify the migration. Initially, these partitions will be hosted on the original brokers.
 
 [source,bash]
