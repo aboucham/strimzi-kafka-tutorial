@@ -66,6 +66,7 @@ Define the new pool using Ceph block storage. Use the `strimzi.io/next-node-ids`
 
 [source,yaml]
 ----
+oc create -f - <<EOF
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
@@ -84,13 +85,8 @@ spec:
       - id: 0
         type: persistent-claim
         size: 100Gi
-        class: ceph-block-storage # Use your Ceph storage class name
-----
-
-Apply the new pool:
-[source,bash]
-----
-oc apply -f pool-b.yaml
+EOF
+#        class: ceph-block-storage # Use your Ceph storage class name
 ----
 
 == Phase 5: Reassign Partitions (The Migration)
@@ -98,6 +94,7 @@ Move data from the old brokers (0, 1, 2) to the new brokers (6, 7, 8) using a `K
 
 [source,yaml]
 ----
+oc create -f - <<EOF
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaRebalance
 metadata:
@@ -107,14 +104,12 @@ metadata:
 spec:
   mode: remove-brokers
   brokers: [0, 1, 2]
+EOF
 ----
 
 === Execute and Approve
 [source,bash]
 ----
-# Apply the rebalance
-oc apply -f rebalance.yaml
-
 # Wait for status to reach 'ProposalReady'
 oc get kafkarebalance migrate-data -o wide -w
 
@@ -142,7 +137,7 @@ Once the data is safe, remove the NFS-backed node pool.
 
 [source,bash]
 ----
-oc delete kafkanodepool pool-a
+oc delete kafkanodepool broker
 ----
 
 The Cluster Operator will automatically delete the old broker pods and clean up the associated resources.
