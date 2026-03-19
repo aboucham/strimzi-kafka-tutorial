@@ -4,15 +4,15 @@
 :source-highlighter: highlightjs
 
 == Introduction
-This guide demonstrates how to migrate Kafka brokers between node pools to change underlying storage types (from NFS to Ceph) without cluster downtime. We will utilize `KafkaNodePool` resources for lifecycle management and `Cruise Control` for safe data migration[cite: 1307, 1591].
+This guide demonstrates how to migrate Kafka brokers between node pools to transition from unsupported storage types (NFS) to supported block storage (Ceph) without cluster downtime. We utilize `KafkaNodePool` resources for lifecycle management and `Cruise Control` for safe data migration.
 
 == Prerequisites
-* [cite_start]Red Hat Streams for Apache Kafka 3.0 (Strimzi 0.46.x) Cluster Operator installed[cite: 434].
-* [cite_start]An OpenShift 4.14+ cluster[cite: 325].
-* `oc` CLI tool configured.
+* Red Hat Streams for Apache Kafka 3.0 (Strimzi 0.46.x) Cluster Operator installed.
+* An OpenShift 4.14 to 4.19 cluster.
+* `oc` CLI tool configured with cluster-admin or strimzi-admin permissions.
 
 == Phase 1: Deploy Initial Kafka Cluster
-Deploy a KRaft-enabled cluster into the `strimzi` namespace.
+Deploy a KRaft-enabled cluster into the `strimzi` namespace. This cluster starts with brokers on IDs 0, 1, and 2.
 
 [source,bash]
 ----
@@ -25,7 +25,7 @@ oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/re
 ----
 
 === Check Deployment Status
-Verify that the brokers (IDs 0, 1, 2) and controllers (IDs 3, 4, 5) are running.
+Verify that the initial brokers (IDs 0, 1, 2) and controllers (IDs 3, 4, 5) are running.
 
 [source,bash]
 ----
@@ -33,41 +33,36 @@ oc get pods -n strimzi
 ----
 
 == Phase 2: Enable Cruise Control
-Enable Cruise Control to manage partition reassignments during the migration[cite: 1591].
+Enable Cruise Control to manage the data movement. This triggers a rolling update of all Kafka brokers to enable the Metrics Reporter.
 
 [source,bash]
 ----
 oc patch kafka kafka-cluster -n strimzi --type=merge -p '{"spec": {"cruiseControl": {}}}'
 ----
 
-[NOTE]
-====
-Adding Cruise Control triggers a rolling update of all Kafka brokers to enable the **Metrics Reporter** plugin, which is required to feed data to Cruise Control[cite: 1610].
-====
-
 == Phase 3: Create Test Data
-Create three topics, each with one partition, and verify they are initially assigned to the old brokers (0, 1, 2).
+Create three topics to verify the migration. Initially, these partitions will be hosted on the original brokers.
 
 [source,bash]
 ----
-# Create topics
-oc run -ti --provision-test --image=registry.redhat.io/amq-streams/kafka-39-rhel9:3.0.1 --restart=Never -- \
-  bin/kafka-topics.sh --bootstrap-server kafka-cluster-kafka-bootstrap:9092 --create --topic topic-0 --partitions 1 --replication-factor 1
+# Create three topics with 1 partition and 1 replica
+for i in {0..2}; do
+  oc run -ti --provision-test-$i --image=registry.redhat.io/amq-streams/kafka-40-rhel9:3.0.1 --restart=Never -- \
+    bin/kafka-topics.sh --bootstrap-server kafka-cluster-kafka-bootstrap:9092 --create --topic topic-$i --partitions 1 --replication-factor 1
+done
 
-# (Repeat for topic-1 and topic-2)
-
-# Verify partition placement
-oc run -ti --verify-test --image=registry.redhat.io/amq-streams/kafka-39-rhel9:3.0.1 --restart=Never -- \
+# Verify current partition placement
+oc run -ti --verify-initial --image=registry.redhat.io/amq-streams/kafka-40-rhel9:3.0.1 --restart=Never -- \
   bin/kafka-topics.sh --bootstrap-server kafka-cluster-kafka-bootstrap:9092 --describe
 ----
 
-Expected Output:
-* Topic 0 -> Partition 0 -> Leader: **0**
-* Topic 1 -> Partition 0 -> Leader: **1**
-* Topic 2 -> Partition 0 -> Leader: **2**
+**Expected Initial State:**
+* `topic-0` -> Leader: **0**
+* `topic-1` -> Leader: **1**
+* `topic-2` -> Leader: **2**
 
-== Phase 4: Create Target Node Pool (`pool-b`)
-Create the new pool using supported Ceph storage. We will use the `strimzi.io/next-node-ids` annotation to force IDs **6, 7, and 8**[cite: 1301].
+== Phase 4: Create Supported Node Pool (`pool-b`)
+Define the new pool using Ceph block storage. Use the `strimzi.io/next-node-ids` annotation to assign IDs 6, 7, and 8 to the new brokers.
 
 [source,yaml]
 ----
@@ -89,24 +84,24 @@ spec:
       - id: 0
         type: persistent-claim
         size: 100Gi
-        class: ceph-block-storage # Replace with your actual storage class
+        class: ceph-block-storage # Use your Ceph storage class name
 ----
 
-Apply the configuration:
+Apply the new pool:
 [source,bash]
 ----
 oc apply -f pool-b.yaml
 ----
 
 == Phase 5: Reassign Partitions (The Migration)
-Move data off the old brokers (0, 1, 2) using Cruise Control in `remove-brokers` mode[cite: 1612].
+Move data from the old brokers (0, 1, 2) to the new brokers (6, 7, 8) using a `KafkaRebalance` resource in `remove-brokers` mode.
 
 [source,yaml]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaRebalance
 metadata:
-  name: migrate-to-pool-b
+  name: migrate-data
   labels:
     strimzi.io/cluster: kafka-cluster
 spec:
@@ -114,40 +109,40 @@ spec:
   brokers: [0, 1, 2]
 ----
 
-=== Execute and Approve Rebalance
+=== Execute and Approve
 [source,bash]
 ----
-# Apply rebalance
+# Apply the rebalance
 oc apply -f rebalance.yaml
 
-# Wait for 'ProposalReady' status
-oc get kafkarebalance migrate-to-pool-b -w
+# Wait for status to reach 'ProposalReady'
+oc get kafkarebalance migrate-data -o wide -w
 
-# Approve the rebalance
-oc annotate kafkarebalance migrate-to-pool-b strimzi.io/rebalance=approve [cite: 1615]
+# Approve the optimization proposal
+oc annotate kafkarebalance migrate-data strimzi.io/rebalance=approve
 ----
 
 == Phase 6: Verification and Cleanup
-Verify that all partitions have moved to the new nodes (6, 7, 8)[cite: 1626].
+Verify that all data has successfully moved to the new pool.
 
 [source,bash]
 ----
-# Verify partition placement
-oc run -ti --final-verify --image=registry.redhat.io/amq-streams/kafka-39-rhel9:3.0.1 --restart=Never -- \
+# Final check of partition placement
+oc run -ti --verify-final --image=registry.redhat.io/amq-streams/kafka-40-rhel9:3.0.1 --restart=Never -- \
   bin/kafka-topics.sh --bootstrap-server kafka-cluster-kafka-bootstrap:9092 --describe
 ----
 
-Expected Results:
-* Topic 0 -> Leader: **6**
-* Topic 1 -> Leader: **7**
-* Topic 2 -> Leader: **8**
+**Expected Final State:**
+* `topic-0` -> Leader: **6**
+* `topic-1` -> Leader: **7**
+* `topic-2` -> Leader: **8**
 
-=== Final Cleanup
-Once data movement is confirmed, delete the old node pool (`pool-a`).
+=== Delete Old Pool
+Once the data is safe, remove the NFS-backed node pool.
 
 [source,bash]
 ----
 oc delete kafkanodepool pool-a
 ----
 
-The Cluster Operator will now safely remove the old pods and their associated storage[cite: 1308].
+The Cluster Operator will automatically delete the old broker pods and clean up the associated resources.
