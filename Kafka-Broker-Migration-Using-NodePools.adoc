@@ -45,9 +45,9 @@ Create three topics to verify the migration. Initially, these partitions will be
 
 [source,bash]
 ----
-# Create three topics with 1 partition and 1 replica
+# Create test topics
 for i in {0..2}; do
-  oc run -ti --provision-test-$i --image=registry.redhat.io/amq-streams/kafka-40-rhel9:3.0.1 --restart=Never -- \
+  oc run provision-test-$i -ti --image=registry.redhat.io/amq-streams/kafka-40-rhel9:3.0.1 --rm --restart=Never -- \
     bin/kafka-topics.sh --bootstrap-server kafka-cluster-kafka-bootstrap:9092 --create --topic topic-$i --partitions 1 --replication-factor 1
 done
 
