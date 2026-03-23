@@ -320,4 +320,45 @@ spec:
     retention.ms: 604800000
     segment.bytes: 1073741824
   partitions: 10
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-0
+  namespace: strimzi
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  config:
+    retention.ms: 604800000
+    segment.bytes: 1073741824
+  partitions: 1
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-1
+  namespace: strimzi
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  config:
+    retention.ms: 604800000
+    segment.bytes: 1073741824
+  partitions: 1
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-2
+  namespace: strimzi
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  config:
+    retention.ms: 604800000
+    segment.bytes: 1073741824
+  partitions: 1
   replicas: 3
