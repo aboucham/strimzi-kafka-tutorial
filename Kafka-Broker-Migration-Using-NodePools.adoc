@@ -24,7 +24,7 @@ oc project strimzi
 oc apply -f https://raw.githubusercontent.com/aboucham/strimzi-kafka-tutorial/refs/heads/main/kafka/kafka-cluster-kraft-full.yaml
 
 export KAFKA_CR_NAME="kafka-cluster"
-export UI_CONSOLE_URL="my-console-ui.apps.aboucham-ai9.emea.aws.cee.support"
+export UI_CONSOLE_URL="my-console-ui.apps.abouchama-ai9.emea.aws.cee.support"
 export NAMESPACE="strimzi"
 export KAFKA_LISTENER_NAME="plain"
 
