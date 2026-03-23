@@ -44,6 +44,7 @@ EOF
 
 === Check Deployment Status
 Verify that the initial brokers (IDs 0, 1, 2) and controllers (IDs 3, 4, 5) are running.
+Check that the cruise control pod is deployed and running.
 
 [source,bash]
 ----
@@ -51,25 +52,37 @@ oc get pods -n strimzi
 ----
 
 == Phase 2: Create Test Data
-Create three topics to verify the migration. Initially, these partitions will be hosted on the original brokers.
+
+Three topics are created to verify the migration. Initially, these partitions will be hosted on the original brokers.
+
 
 [source,bash]
 ----
-# Create test topics
-for i in {0..2}; do
-  oc run provision-test-$i -ti --image=registry.redhat.io/amq-streams/kafka-40-rhel9:3.0.1 --rm --restart=Never -- \
-    bin/kafka-topics.sh --bootstrap-server kafka-cluster-kafka-bootstrap:9092 --create --topic topic-$i --partitions 1 --replication-factor 1
-done
+export DOMAIN_NAME="apps.abouchama-ai9.emea.aws.cee.support"
+export STRIMZI_IMAGE="registry.redhat.io/amq-streams/kafka-41-rhel9@sha256:d2d36a96481e99b22e833fb4a17a10750273128a9513e0e0fa1f59c5e0cfd871"
 
-# Verify current partition placement
-oc run -ti --verify-initial --image=registry.redhat.io/amq-streams/kafka-40-rhel9:3.0.1 --restart=Never -- \
-  bin/kafka-topics.sh --bootstrap-server kafka-cluster-kafka-bootstrap:9092 --describe
+# Helper function for running temporary Kafka pods
+krun() { kubectl run krun-"$(date +%s)" -it --rm --restart="Never" --image="$STRIMZI_IMAGE" -- "$@"; }
+echo $DOMAIN_NAME
 ----
 
-**Expected Initial State:**
-* `topic-0` -> Leader: **0**
-* `topic-1` -> Leader: **1**
-* `topic-2` -> Leader: **2**
+
+[source,bash]
+----
+INTERNAL_BOOTSTRAP="kafka-cluster-cluster-bootstrap.strimzi.svc.cluster.local:9292"
+
+krun bin/kafka-console-producer.sh \
+  --bootstrap-server $INTERNAL_BOOTSTRAP \
+  --topic topic-0
+
+krun bin/kafka-console-producer.sh \
+  --bootstrap-server $INTERNAL_BOOTSTRAP \
+  --topic topic-1
+
+krun bin/kafka-console-producer.sh \
+  --bootstrap-server $INTERNAL_BOOTSTRAP \
+  --topic topic-0
+----
 
 == Phase 4: Create Supported Node Pool (`pool-b`)
 Define the new pool using Ceph block storage. Use the `strimzi.io/next-node-ids` annotation to assign IDs 6, 7, and 8 to the new brokers.
