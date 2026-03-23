@@ -69,7 +69,7 @@ echo $DOMAIN_NAME
 
 [source,bash]
 ----
-INTERNAL_BOOTSTRAP="kafka-cluster-kafka-bootstrap.strimzi.svc.cluster.local:9292"
+INTERNAL_BOOTSTRAP="kafka-cluster-kafka-bootstrap:9292"
 
 krun bin/kafka-console-producer.sh \
   --bootstrap-server $INTERNAL_BOOTSTRAP \
